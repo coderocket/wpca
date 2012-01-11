@@ -1,5 +1,5 @@
 x : int
   { x = X }
 ; if true -> x := -x [] true -> skip fi
-  { x = X }
+  { x = abs[X] }
 
