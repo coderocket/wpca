@@ -2,14 +2,14 @@
 module Grammar where
 import Data.Char
 import Lexer
-import ParserMonad
+-- import ParserMonad
 import AST
 }
 
 %name hParse
 %tokentype { Token }
 %error { parseError }
-%monad { P } 
+%monad { Either String } 
 %token
 	'true'	{ TokTrue $$ }
 	'false'	{ TokFalse $$ }
@@ -108,21 +108,20 @@ Expr : '-' Expr { Neg $2 }
 
 {
 
-content (p, v) = v
-
-failWithLoc :: AlexPosn -> String -> P a
-failWithLoc pos err = Failed $ err ++ " at " ++ (show line) ++ " line, " ++ (show column) ++ " column\n"
+failWithLoc :: AlexPosn -> String -> Either String a
+failWithLoc pos err = Left $ err ++ " at " ++ (show line) ++ " line, " ++ (show column) ++ " column\n"
     where
     getLineCol (AlexPn _ line col) = (line,col)
     (line, column) = getLineCol pos
 
 parseError (t:tokens) = failWithLoc (pos t) "parse error\n"
 
-parseError [] = failP "parse error at end of file\n"
+parseError [] = Left "parse error at end of file\n"
 
 join :: String -> ([String],[Node]) -> Node -> ([String],[Node])
 join n (ns,es) e = (n:ns,es++[e])
 
-parse :: String -> P Node 
-parse s = hParse (alexScanTokens s)
+parse :: String -> IO (Either String Node) 
+parse s = return (hParse (alexScanTokens s)) 
+
 }

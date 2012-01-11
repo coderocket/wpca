@@ -2,40 +2,36 @@
 module Main where
 import System
 import Grammar
-import ParserMonad
 import CFGGrammar
 import AST
 import Alloy
 import CLang
 
-work (Ok env) (Ok ast) = 
-  case (lookup "global.analysisfile" env) of
-    (Just (n:ns)) -> 
-      do putStrLn ("writing analysis file to " ++ n)
-         writeFile n (showAlloy ast)
-         writeCFile env ast
-    Nothing -> putStrLn "error: configuration is missing analysis file name."
+work (Right env) (Right ast) = 
+  do ns <- lookup "global.analysisfile" env
+     cs <- lookup "c.sourcefile" env
+     return $ do putStrLn ("writing analysis file to " ++ (head ns))
+                 writeFile (head ns) (showAlloy ast)
+                 putStrLn ("writing c source file to " ++ (head cs))
+                 writeFile (head cs) (showCCode "main" ast)
 
-work (Failed err) _ = putStrLn ("failed parsing config file:" ++ err)
-work _ (Failed err) = putStrLn ("failed parsing program: " ++ err)
+ 
+work (Left err) _ = Just $ putStrLn ("invalid configuration file:" ++ err)
+work _ (Left err) = Just $ putStrLn ("invalid program: " ++ err)
 
-writeCFile env ast =
-  case (lookup "c.sourcefile" env) of
-    (Just (n:ns)) ->
-     do putStrLn ("writing c source file to " ++ n)
-        writeFile n (showCCode "main" ast)
-    Nothing -> putStrLn ""
-
-main = do putStr versionMsg 
-          args <- getArgs
-          pname <- getProgName
-          if length args /= 1
-             then usage pname
-             else do s <- readFile "wpca.cfg"
-                     c <- return (parseConfig s)
-                     s <- readFile (args!!0)
-                     p <- return (parse s)
-                     work c p
+main = 
+  do putStr versionMsg 
+     args <- getArgs
+     pname <- getProgName
+     if length args /= 1
+     then usage pname
+     else do s <- readFile "wpca.cfg"
+             c <- parseConfig s
+             s <- readFile (args!!0)
+             p <- parse s
+             case (work c p) of 
+               (Just m) -> m
+               Nothing -> putStrLn "error: invalid configuration file: missing declaration."          
 
 versionMsg = "This is wpca, Version 1.0\n"
 

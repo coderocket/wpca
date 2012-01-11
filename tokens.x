@@ -109,4 +109,6 @@ pos (TokArrow p) = p
 pos (TokSquare p) = p
 pos (TokSkip p) = p
 
+content (p,v) = v
+
 }

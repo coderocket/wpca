@@ -2,13 +2,12 @@
 module CFGGrammar where
 import Data.Char
 import CFGLexer
-import ParserMonad
 }
 
 %name hParse
 %tokentype { Token }
 %error { parseError }
-%monad { P } 
+%monad { Either String } 
 %token
 	name	{ TokName $$ }
 	string	{ TokString $$ }
@@ -46,18 +45,17 @@ sectionToEnv :: Section -> [(String,[String])]
 sectionToEnv (Section sname ds) = foldr f [] ds 
   where f (s,vs) ds = (sname++"."++s,vs):ds
   
-content (p, v) = v
-
-failWithLoc :: AlexPosn -> String -> P a
-failWithLoc pos err = Failed $ err ++ " at " ++ (show line) ++ " line, " ++ (show column) ++ " column\n"
+failWithLoc :: AlexPosn -> String -> Either String a
+failWithLoc pos err = Left $ err ++ " at " ++ (show line) ++ " line, " ++ (show column) ++ " column\n"
     where
     getLineCol (AlexPn _ line col) = (line,col)
     (line, column) = getLineCol pos
 
 parseError (t:tokens) = failWithLoc (pos t) "parse error\n"
 
-parseError [] = failP "parse error at end of file\n"
+parseError [] = Left "parse error at end of file\n"
 
-parseConfig s = do sec <- hParse (alexScanTokens s)  
-                   return (foldr (++) [] (map sectionToEnv sec))
+parseConfig s = return (do sec <- hParse (alexScanTokens s)  
+                           return (foldr (++) [] (map sectionToEnv sec)))
+
 }

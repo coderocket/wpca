@@ -38,4 +38,6 @@ pos (TokComma p) = p
 pos (TokName (p, _)) = p
 pos (TokString (p, _)) = p
 
+content (p,v) = v
+
 }
