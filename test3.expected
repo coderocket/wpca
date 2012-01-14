@@ -1,0 +1,19 @@
+open util/integer
+
+pred true { no none }
+pred false { some none }
+
+one sig State {
+ x,y : Int
+}
+
+one sig Const {
+ X : Int,
+Y : Int
+}
+
+pred obligation {
+(State.x = Const.X and State.y = Const.Y) => (State.y = Const.Y and State.x = Const.X)
+}
+
+check { obligation }
