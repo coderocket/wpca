@@ -37,6 +37,7 @@ subst (NodeLeq x y) ne = NodeLeq (subst x ne) (subst y ne)
 subst (Conj x y) ne = Conj (subst x ne) (subst y ne)
 subst PredTrue _ = PredTrue
 subst PredFalse _ = PredFalse
+subst (Join x y) ne = Join (subst x ne) (subst y ne)
 
 free :: [String] -> Node -> [String]
 
@@ -57,4 +58,5 @@ free bound (Div x y) = (free bound x) `union` (free bound y)
 free bound (Mod x y) = (free bound x) `union` (free bound y)
 free bound (NodeEq x y) = (free bound x) `union` (free bound y)
 free bound (Conj x y) = (free bound x) `union` (free bound y)
+free bound (Join x y) = (free bound x) `union` (free bound y)
 

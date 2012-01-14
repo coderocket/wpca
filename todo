@@ -1,7 +1,7 @@
 
 - how can we translate alloy's solution to a test case? 
 this of course depends on the platform. 
-- support analysis functions and relations: if a name is not a state variable and it is not a constant (that is, it is not appear in an equality expression with a state variable) then we assume that it is a modeling variable.
+
 - activate alloy from wpca and display the result in a way that is meaningful to the author of the program.
 
  (_, Just hout, _, _) <- createProcess (proc "ls" []){ std_out = CreatePipe }
@@ -9,6 +9,7 @@ hGetContents hout
 
 done
 
+- support analysis functions and relations: if a name is not a state variable and it is not a constant (that is, it does not appear in an equality expression with a state variable) then we assume that it is a modeling variable.
 - put parenthesis around expressions 
 - move project to github
 - read from file

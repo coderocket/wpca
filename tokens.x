@@ -19,6 +19,8 @@ tokens :-
   ";"                                   { \p s -> TokSemi p }
   ":"                                   { \p s -> TokColon p }
   "[]"                                  { \p s -> TokSquare p }
+  "["                                  { \p s -> TokLSquare p }
+  "]"                                  { \p s -> TokRSquare p }
   "->"                                  { \p s -> TokArrow p }
   "("                                   { \p s -> TokLB p }
   ")"                                   { \p s -> TokRB p }
@@ -74,6 +76,8 @@ data Token =
 	TokIf AlexPosn |
 	TokFi AlexPosn |
 	TokArrow AlexPosn |
+	TokLSquare AlexPosn |
+	TokRSquare AlexPosn |
 	TokSquare AlexPosn |
 	TokSkip AlexPosn
 	deriving (Eq,Show)
@@ -106,6 +110,8 @@ pos (TokOd  p) = p
 pos (TokIf  p) = p
 pos (TokFi p) = p
 pos (TokArrow p) = p
+pos (TokLSquare p) = p
+pos (TokRSquare p) = p
 pos (TokSquare p) = p
 pos (TokSkip p) = p
 

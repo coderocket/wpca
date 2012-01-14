@@ -24,6 +24,8 @@ import AST
 	')'	{ TokRB $$ }
 	'{'	{ TokLCurl $$ }
 	'}'	{ TokRCurl $$ }
+	'['    { TokLSquare $$ }
+	']'    { TokRSquare $$ }
 	':='	{ TokAssign $$ }
 	'='	{ TokEq $$ }
 	'>='	{ TokGeq $$ }
@@ -99,13 +101,18 @@ Expr : '-' Expr { Neg $2 }
 	| Expr '/' Expr { Quotient $1 $3 }
 	| Expr 'mod' Expr { Mod $1 $3 }
 	| Expr 'div' Expr { Div $1 $3 }
-	| int { Nat (content $1) }
+	| Factor { $1 }
+
+Factor: int { Nat (content $1) }
 	| name { Var (content $1) }
 	| 'int' { TypeVar "int" }
 	| 'true' { PredTrue }
 	| 'false' { PredFalse }
 	| '(' Expr ')' { $2 }
+	| Factor '[' ExprList ']' { foldr Join $1 $3 }
 
+ExprList : Expr { [$1] }
+	| ExprList ',' Expr { $3:$1 }
 {
 
 failWithLoc :: AlexPosn -> String -> Either String a

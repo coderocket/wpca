@@ -16,12 +16,14 @@ showA _ (Spec locals pre program post) =
         ++ "pred true { no none }\n"
         ++ "pred false { some none }\n\n"
 	++ "one sig State {\n " ++ (showA [] locals)  
-	++ "\n}\n\none sig Const {\n " ++ (showConstDecls (cvar env pre))
+	++ "\n}\n\none sig Const {\n " ++ (showConstDecls cs)
 	++ "\n}\n\npred obligation {\n" 
 	++  "(" ++ (showA env pre) ++ ") => " 
 	++  "(" ++ (showA env (wp program post)) ++ ")"
 	++ "\n}\n\ncheck { obligation }\n"
-  where env = types locals
+  where ts = types locals
+        cs = cvars ts pre
+        env = ts ++ cs
 
 showA _ (Locals ds) = showDecls ds 
 showA env (Plus x y) = (showA env x) ++ ".add[" ++ (showA env y) ++ "]"
@@ -31,9 +33,11 @@ showA env (TypeVar vn) = if vn == "int" then "Int" else vn
 
 showA env (Var vn) = 
 	case (lookup vn env) of
+		(Just (Const _)) -> "Const." ++ vn
 		(Just _) -> "State." ++ vn
-		Nothing -> "Const." ++ vn
+		Nothing -> vn
 
+showA env (Const n) = showA env n
 showA _ (Nat x) = (show x)
 showA env (Neg x) = "-" ++ (showA env x)
 showA env (Quotient x y) = (showA env x) ++ " / " ++ (showA env y)
@@ -47,13 +51,14 @@ showA env (Disj x y) = "("++ (showA env x) ++ " or " ++ (showA env y)++")"
 showA env (Implies x y) = "(" ++ (showA env x) ++ " => " ++ (showA env y) ++")"
 showA _ (PredTrue) = "true"
 showA _ (PredFalse) = "false"
+showA env (Join x y) = (showA env x) ++ "." ++ (showA env y)
 
 showDecls [d] = showDecl d
-showDecls (d:(dd:ds)) = (showDecl d) ++ ";" ++ (showDecls (dd:ds))
+showDecls (d:ds) = (showDecl d) ++ ";" ++ (showDecls ds)
 
 showDecl (Declaration ds tp) = (showNames ds) ++ " : " ++ (showA [] tp)
 showNames [n] = n
-showNames (n:(nn:ns)) = n ++ "," ++ (showNames (nn:ns))
+showNames (n:ns) = n ++ "," ++ (showNames ns)
 
 showConstDecls :: [(String,Node)] -> String
 showConstDecls [] = ""
@@ -64,33 +69,21 @@ types :: Node -> Env
 
 types (Locals ds) = declsToList ds
 
-cvar :: [(String, Node)] -> Node -> [(String, Node)]
+cvars :: [(String, Node)] -> Node -> [(String, Node)]
 
--- to find the type of a constant (a.k.a model) variable 
--- we look for equality expressions where the left hand side is
--- a state variable and the right hand side is the constant variable.
+-- To find the type of a constant (a.k.a model) variable 
+-- we look for either a top level equality expression or 
+-- an equality expression in top level conjunctions where 
+-- the left hand side is a state variable and the right 
+-- hand side is the constant variable.
 
-cvar types (NodeEq (Var v) (Var c)) = 
+cvars types (NodeEq (Var v) (Var c)) = 
   case (lookup v types) of
     (Just t) -> case (lookup c types) of
-      Nothing -> [(c, t)]
+      Nothing -> [(c, Const t)]
       (Just _) -> []
     Nothing -> []
 	
-cvar types (NodeEq x y) = (cvar types x) ++ (cvar types y)
-
-cvar types (Var vn) = []
-cvar types (Plus x y) = (cvar types x) ++ (cvar types y)
-cvar types (Minus x y) = (cvar types x) ++ (cvar types y)
-cvar types (Times x y) = (cvar types x) ++ (cvar types y)
-cvar types (Nat x) = []
-cvar types PredTrue = []
-cvar types PredFalse = []
-cvar types (Neg x) = cvar types x
-cvar types (Quotient x y) = (cvar types x) ++ (cvar types y)
-cvar types (Div x y) = (cvar types x) ++ (cvar types y)
-cvar types (Mod x y) = (cvar types x) ++ (cvar types y)
-cvar types (Conj x y) = (cvar types x) ++ (cvar types y)
-cvar types (NodeGeq x y) = (cvar types x) ++ (cvar types y)
-cvar types (NodeLeq x y) = (cvar types x) ++ (cvar types y)
+cvars types (Conj x y) = (cvars types x) ++ (cvars types y)
+cvars types _ = [] 
 
