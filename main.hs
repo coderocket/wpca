@@ -8,14 +8,10 @@ import Alloy
 import CLang
 
 work (Right env) (Right ast) = 
-  do ns <- lookup "global.analysisfile" env
-     cs <- lookup "c.sourcefile" env
-     return $ do putStrLn ("writing analysis file to " ++ (head ns))
-                 writeFile (head ns) (showAlloy ast)
-                 putStrLn ("writing c source file to " ++ (head cs))
-                 writeFile (head cs) (showCCode "main" ast)
+  do p <- showAlloy env ast
+     q <- showCCode env ast
+     return (p >> q)
 
- 
 work (Left err) _ = Just $ putStrLn ("invalid configuration file:" ++ err)
 work _ (Left err) = Just $ putStrLn ("invalid program: " ++ err)
 

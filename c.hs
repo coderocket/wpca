@@ -3,13 +3,25 @@ import List
 import AST
 import WPC
 
-showCCode :: String -> Node -> String
+showCCode :: [(String,[String])] -> Node -> Maybe (IO ())
 
-showCCode name (Spec locals pre program post) = 
+showCCode env ast =
+  do cs <- lookup "c.sourcefile" env
+     hs <- lookup "c.headerfile" env
+     fn <- lookup "c.function" env
+     return $ do putStrLn ("writing c header file to " ++ (head hs))
+                 writeFile (head hs) (showCHeader (head fn) ast)
+                 putStrLn ("writing c source file to " ++ (head cs))
+                 writeFile (head cs) (showCSource (head fn) ast)
+
+showCHeader name (Spec locals _ _ _) =
+	"void " ++ name ++ "(" ++ (showC locals) ++ ");\n"
+
+showCSource name (Spec locals pre program post) = 
 	"void " ++ name ++ "(" ++ (showC locals) ++ ")\n{\n" 
 	++ (showNewLocals locals) ++ "\n"
 	++ (showC program)
-	++ "\n}"
+	++ "\n}\n"
 
 showC (Locals ds) = showDecls ds 
 showC (Assign (ns,es)) = showAssign (zip ns es)

@@ -3,11 +3,18 @@ import List
 import AST
 import WPC
 
+showAlloy :: [(String,[String])] -> Node -> Maybe (IO ())
+
+showAlloy env ast =
+  do ns <- lookup "global.analysisfile" env
+     ls <- lookup "global.analysislibraries" env
+     return $ do putStrLn ("writing analysis file to " ++ (head ns))
+                 writeFile (head ns) ((showLibraries ls) ++ (showA [] ast))
+
+showLibraries :: [String] -> String
+showLibraries ls = foldr (++) "" (map f ls) where f s = "open " ++ s ++ "\n"
+
 type Env = [(String,Node)]
-
-showAlloy :: Node -> String
-
-showAlloy = showA [] 
 
 showA :: Env -> Node -> String
 
