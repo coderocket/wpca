@@ -33,9 +33,9 @@ showA _ (Spec locals pre program post) =
         env = ts ++ cs
 
 showA _ (Locals ds) = showDecls ds 
-showA env (Plus x y) = (showA env x) ++ ".add[" ++ (showA env y) ++ "]"
-showA env (Minus x y) = (showA env x) ++ ".sub[" ++ (showA env y) ++ "]"
-showA env (Times x y) = (showA env x) ++ ".mul[" ++ (showA env y) ++"]"
+showA env (BinOp Plus x y) = (showA env x) ++ ".add[" ++ (showA env y) ++ "]"
+showA env (BinOp Minus x y) = (showA env x) ++ ".sub[" ++ (showA env y) ++ "]"
+showA env (BinOp Times x y) = (showA env x) ++ ".mul[" ++ (showA env y) ++"]"
 showA env (TypeVar vn) = if vn == "int" then "Int" else vn
 
 showA env (Var vn) = 
@@ -47,20 +47,20 @@ showA env (Var vn) =
 showA env (Const n) = showA env n
 showA _ (Nat x) = (show x)
 showA env (Neg x) = (showA env x) ++ ".negate"
-showA env (Quotient x y) = (showA env x) ++ " / " ++ (showA env y)
-showA env (Div x y) = (showA env x) ++ ".div[" ++ (showA env y) ++"]"
-showA env (Mod x y) = (showA env x) ++ ".rem[" ++ (showA env y) ++"]"
-showA env (NodeEq x y) = (showA env x) ++ " = " ++ (showA env y)
-showA env (NodeGreater x y) = (showA env x) ++ " > " ++ (showA env y)
-showA env (NodeLess x y) = (showA env x) ++ " < " ++ (showA env y)
-showA env (NodeGeq x y) = (showA env x) ++ " >= " ++ (showA env y)
-showA env (NodeLeq x y) = (showA env x) ++ " <= " ++ (showA env y)
-showA env (Conj x y) = (showA env x) ++ " and " ++ (showA env y)
-showA env (Disj x y) = "("++ (showA env x) ++ " or " ++ (showA env y)++")"
-showA env (Implies x y) = "(" ++ (showA env x) ++ " => " ++ (showA env y) ++")"
+showA env (BinOp Quotient x y) = (showA env x) ++ " / " ++ (showA env y)
+showA env (BinOp Div x y) = (showA env x) ++ ".div[" ++ (showA env y) ++"]"
+showA env (BinOp Mod x y) = (showA env x) ++ ".rem[" ++ (showA env y) ++"]"
+showA env (BinOp NodeEq x y) = (showA env x) ++ " = " ++ (showA env y)
+showA env (BinOp NodeGreater x y) = (showA env x) ++ " > " ++ (showA env y)
+showA env (BinOp NodeLess x y) = (showA env x) ++ " < " ++ (showA env y)
+showA env (BinOp NodeGeq x y) = (showA env x) ++ " >= " ++ (showA env y)
+showA env (BinOp NodeLeq x y) = (showA env x) ++ " <= " ++ (showA env y)
+showA env (BinOp Conj x y) = (showA env x) ++ " and " ++ (showA env y)
+showA env (BinOp Disj x y) = "("++ (showA env x) ++ " or " ++ (showA env y)++")"
+showA env (BinOp Implies x y) = "(" ++ (showA env x) ++ " => " ++ (showA env y) ++")"
+showA env (BinOp Join x y) = "("++(showA env x) ++ ").(" ++ (showA env y) ++ ")"
 showA _ (PredTrue) = "true"
 showA _ (PredFalse) = "false"
-showA env (Join x y) = "("++(showA env x) ++ ").(" ++ (showA env y) ++ ")"
 
 showDecls [d] = showDecl d
 showDecls (d:ds) = (showDecl d) ++ ";" ++ (showDecls ds)
@@ -86,13 +86,13 @@ cvars :: [(String, Node)] -> Node -> [(String, Node)]
 -- the left hand side is a state variable and the right 
 -- hand side is the constant variable.
 
-cvars types (NodeEq (Var v) (Var c)) = 
+cvars types (BinOp NodeEq (Var v) (Var c)) = 
   case (lookup v types) of
     (Just t) -> case (lookup c types) of
       Nothing -> [(c, Const t)]
       (Just _) -> []
     Nothing -> []
 	
-cvars types (Conj x y) = (cvars types x) ++ (cvars types y)
+cvars types (BinOp Conj x y) = (cvars types x) ++ (cvars types y)
 cvars types _ = [] 
 

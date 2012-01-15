@@ -93,18 +93,18 @@ AssignError : AssignOk ',' {% failWithLoc $2 "assignment has more expressions th
     | name ',' AssignOk {% failWithLoc $2 "assignment has more variables than expressions." }
 
 Expr : '-' Expr { Neg $2 }
-	| Expr 'and' Expr { Conj $1 $3 }
-	| Expr '>' Expr { NodeGreater $1 $3 }
-	| Expr '<' Expr { NodeLess $1 $3 }
-	| Expr '>=' Expr { NodeGeq $1 $3 }
-	| Expr '<=' Expr { NodeLeq $1 $3 }
-	| Expr '=' Expr { NodeEq $1 $3 }
-	| Expr '+' Expr { Plus $1 $3 }
-	| Expr '-' Expr { Minus $1 $3 }
-	| Expr '*' Expr { Times $1 $3 }
-	| Expr '/' Expr { Quotient $1 $3 }
-	| Expr 'mod' Expr { Mod $1 $3 }
-	| Expr 'div' Expr { Div $1 $3 }
+	| Expr 'and' Expr { BinOp Conj $1 $3 }
+	| Expr '>' Expr { BinOp NodeGreater $1 $3 }
+	| Expr '<' Expr { BinOp NodeLess $1 $3 }
+	| Expr '>=' Expr { BinOp NodeGeq $1 $3 }
+	| Expr '<=' Expr { BinOp NodeLeq $1 $3 }
+	| Expr '=' Expr { BinOp NodeEq $1 $3 }
+	| Expr '+' Expr { BinOp Plus $1 $3 }
+	| Expr '-' Expr { BinOp Minus $1 $3 }
+	| Expr '*' Expr { BinOp Times $1 $3 }
+	| Expr '/' Expr { BinOp Quotient $1 $3 }
+	| Expr 'mod' Expr { BinOp Mod $1 $3 }
+	| Expr 'div' Expr { BinOp Div $1 $3 }
 	| Factor { $1 }
 
 Factor: int { Nat (content $1) }
@@ -113,7 +113,7 @@ Factor: int { Nat (content $1) }
 	| 'true' { PredTrue }
 	| 'false' { PredFalse }
 	| '(' Expr ')' { $2 }
-	| Factor '[' ExprList ']' { foldr Join $1 $3 }
+	| Factor '[' ExprList ']' { foldr (BinOp Join) $1 $3 }
 
 ExprList : Expr { [$1] }
 	| ExprList ',' Expr { $3:$1 }

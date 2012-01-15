@@ -29,24 +29,24 @@ showC (Cond gs) = showCond gs
 --showC (Loop gs) = showLoop gs
 showC (Seq x y) = (showC x) ++ "\n" ++ (showC y)
 showC Skip = ";"
-showC (Plus x y) = "(" ++ (showC x) ++ "+" ++ (showC y) ++ ")"
-showC (Minus x y) = "(" ++ (showC x) ++ "-" ++ (showC y) ++ ")"
-showC (Times x y) = (showC x) ++ "*" ++ (showC y) 
 showC (TypeVar vn) = vn
 showC (Var vn) = "*"++vn
 showC (Nat x) = (show x)
 showC (Neg x) = "-" ++ (showC x)
-showC (Quotient x y) = (showC x) ++ " / " ++ (showC y)
-showC (Div x y) = (showC x) ++ " / " ++ (showC y) 
-showC (Mod x y) = (showC x) ++ " % " ++ (showC y)
-showC (NodeEq x y) = (showC x) ++ " == " ++ (showC y)
-showC (NodeGreater x y) = (showC x) ++ " > " ++ (showC y)
-showC (NodeLess x y) = (showC x) ++ " < " ++ (showC y)
-showC (NodeGeq x y) = (showC x) ++ " >= " ++ (showC y)
-showC (NodeLeq x y) = (showC x) ++ " <= " ++ (showC y)
-showC (Conj x y) = (showC x) ++ " && " ++ (showC y)
-showC (Disj x y) = "("++ (showC x) ++ " || " ++ (showC y) ++ ")"
-showC (Implies x y) = "(!(" ++ (showC x) ++ ") || " ++ (showC y) ++")"
+showC (BinOp Plus x y) = "(" ++ (showC x) ++ "+" ++ (showC y) ++ ")"
+showC (BinOp Minus x y) = "(" ++ (showC x) ++ "-" ++ (showC y) ++ ")"
+showC (BinOp Times x y) = (showC x) ++ "*" ++ (showC y) 
+showC (BinOp Quotient x y) = (showC x) ++ " / " ++ (showC y)
+showC (BinOp Div x y) = (showC x) ++ " / " ++ (showC y) 
+showC (BinOp Mod x y) = (showC x) ++ " % " ++ (showC y)
+showC (BinOp NodeEq x y) = (showC x) ++ " == " ++ (showC y)
+showC (BinOp NodeGreater x y) = (showC x) ++ " > " ++ (showC y)
+showC (BinOp NodeLess x y) = (showC x) ++ " < " ++ (showC y)
+showC (BinOp NodeGeq x y) = (showC x) ++ " >= " ++ (showC y)
+showC (BinOp NodeLeq x y) = (showC x) ++ " <= " ++ (showC y)
+showC (BinOp Conj x y) = (showC x) ++ " && " ++ (showC y)
+showC (BinOp Disj x y) = "("++ (showC x) ++ " || " ++ (showC y) ++ ")"
+showC (BinOp Implies x y) = "(!(" ++ (showC x) ++ ") || " ++ (showC y) ++")"
 showC PredTrue = "1"
 showC PredFalse = "0"
 
