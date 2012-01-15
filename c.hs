@@ -26,7 +26,7 @@ showCSource name (Spec locals pre program post) =
 showC (Locals ds) = showDecls ds 
 showC (Assign (ns,es)) = showAssign (zip ns es)
 showC (Cond gs) = showCond gs
---showC (Loop gs) = showLoop gs
+showC (Loop _ gs) = "while(1) {\n" ++ (showLoop gs) ++ "\n}\n"
 showC (Seq x y) = (showC x) ++ "\n" ++ (showC y)
 showC Skip = ";"
 showC (TypeVar vn) = vn
@@ -61,4 +61,10 @@ showAssign aa = (assignNew aa) ++ (assignVars aa)
 assignNew = foldr f "" where f (n,e) s = n++"_new = "++(showC e)++";\n"++s 
 assignVars = foldr f "" where f (n,_) s = "*"++n++" = " ++ n++"_new" ++";\n" ++ s
 
-showCond = foldr f "" where f (g,s) gs = "if (" ++ (showC g) ++ ") {\n" ++ (showC s) ++ "} else {\n" ++ gs ++"}\n"
+showCond = foldr f "" 
+  where f (g,s) gs = "if (" ++ (showC g) ++ ") {\n" ++ (showC s) ++ "} else {\n" ++ gs ++"}\n"
+
+showLoop = foldr f "" 
+  where f (g,s) "" = "if (" ++ (showC g) ++ ") {\n" ++ (showC s) ++ "} else break;" 
+        f (g,s) gs = "if (" ++ (showC g) ++ ") {\n" ++ (showC s) ++ "} else {\n" ++ gs ++ "}\n"
+

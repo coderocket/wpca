@@ -1,4 +1,5 @@
 
+- separate the alloy checks according to the code segments. this way it will be easier to understand which part of the program is incorrect
 - create a java module 
 - we need to deal with counterexamples that occur because of overflows. when alloy's latest version comes out we can use the 'no overflow' feature. should we do something else in the meantime?
 - should we check for a particular alloy version?

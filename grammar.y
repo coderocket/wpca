@@ -45,6 +45,7 @@ import AST
 	'mod'	{ TokMod $$ }
 	'div'	{ TokDiv $$ }
 	'skip'  { TokSkip $$ }
+	'keeping'  { TokKeep $$ }
 
 %left 'and'
 %nonassoc '=' '>=' '<=' '>' '<'
@@ -76,7 +77,7 @@ Stmt : If { $1 }
     | Do { $1 }
     | 'skip' { Skip }
 
-Do : 'do' GuardedCommands 'od' { Loop (reverse $2) }
+Do : 'keeping' Expr 'do' GuardedCommands 'od' { Loop $2 (reverse $4) }
 
 If : 'if' GuardedCommands 'fi' { Cond (reverse $2) }
 

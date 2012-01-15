@@ -38,11 +38,12 @@ tokens :-
   "and"                                 { \p s -> TokAnd p }
   "div"                                 { \p s -> TokDiv p }
   "mod"                                 { \p s -> TokMod p }
-  "od"                                  { \p s -> TokOd p }
+  "do"                                  { \p s -> TokDo p }
   "od"                                  { \p s -> TokOd p }
   "if"                                  { \p s -> TokIf p }
   "fi"                                  { \p s -> TokFi p }
   "skip"                                { \p s -> TokSkip p }
+  "keeping"                             { \p s -> TokKeep p }
   $alpha [$alpha $digit]*		{ \p s -> TokName (p,s) }
   $digit+				{ \p s -> TokInt (p,(read s)) }
 {
@@ -83,7 +84,8 @@ data Token =
 	TokLSquare AlexPosn |
 	TokRSquare AlexPosn |
 	TokSquare AlexPosn |
-	TokSkip AlexPosn
+	TokSkip AlexPosn |
+	TokKeep AlexPosn
 	deriving (Eq,Show)
 
 pos (TokTrue p) = p
@@ -120,6 +122,7 @@ pos (TokLSquare p) = p
 pos (TokRSquare p) = p
 pos (TokSquare p) = p
 pos (TokSkip p) = p
+pos (TokKeep p) = p
 
 content (p,v) = v
 

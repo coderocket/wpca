@@ -2,6 +2,14 @@ open util/integer
 
 module misc
 
+fun gcd[x,y:Int]:Int {
+  max[cd[x,y]]
+}
+
+fun cd[x,y:Int]:set Int {
+  { z : Int | rem[x,z] = 0 and rem[y,z] = 0  }  
+}
+
 fun max[x,y:Int]:Int {
   x < y => y else x
 }
