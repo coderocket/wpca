@@ -1,4 +1,4 @@
-open misc.als
+open misc
 open util/integer
 
 pred true { no none }
@@ -13,7 +13,7 @@ one sig Const {
 }
 
 pred obligation {
-(State.x = Const.X) => ((true or true) and (true => -State.x = Const.X.abs) and (true => State.x = Const.X.abs))
+(State.x = Const.X) => ((true or true) and (true => (State.x.negate).(abs) = (Const.X).(abs)) and (true => (State.x).(abs) = (Const.X).(abs)))
 }
 
 check { obligation }

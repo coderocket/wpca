@@ -1,4 +1,4 @@
-open misc.als
+open misc
 open util/integer
 
 pred true { no none }
