@@ -1,0 +1,20 @@
+open misc
+open util/integer
+
+pred true { no none }
+pred false { some none }
+
+one sig State {
+ x,y,z : Int
+}
+
+one sig Const {
+ X : Int,
+Y : Int
+}
+
+pred obligation {
+(State.x = Const.X and State.y = Const.Y) => ((State.x >= State.y or State.y >= State.x) and (State.x >= State.y => State.x = Const.X and State.y = Const.Y and State.x = (State.y).((State.x).(max))) and (State.y >= State.x => State.x = Const.X and State.y = Const.Y and State.y = (State.y).((State.x).(max))))
+}
+
+check { obligation }

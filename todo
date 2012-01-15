@@ -1,4 +1,7 @@
 
+- create a java module 
+- we need to deal with counterexamples that occur because of overflows. when alloy's latest version comes out we can use the 'no overflow' feature. should we do something else in the meantime?
+- should we check for a particular alloy version?
 - how can we translate alloy's solution to a test case? 
 this of course depends on the platform. 
 
@@ -7,7 +10,7 @@ this of course depends on the platform.
  (_, Just hout, _, _) <- createProcess (proc "ls" []){ std_out = CreatePipe }
 hGetContents hout
 
-done
+Done
 
 - support analysis functions and relations: if a name is not a state variable and it is not a constant (that is, it does not appear in an equality expression with a state variable) then we assume that it is a modeling variable.
 - put parenthesis around expressions 
