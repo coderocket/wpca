@@ -46,11 +46,13 @@ showA env (Var vn) =
 
 showA env (Const n) = showA env n
 showA _ (Nat x) = (show x)
-showA env (Neg x) = "-" ++ (showA env x)
+showA env (Neg x) = (showA env x) ++ ".negate"
 showA env (Quotient x y) = (showA env x) ++ " / " ++ (showA env y)
 showA env (Div x y) = (showA env x) ++ ".div[" ++ (showA env y) ++"]"
 showA env (Mod x y) = (showA env x) ++ ".rem[" ++ (showA env y) ++"]"
 showA env (NodeEq x y) = (showA env x) ++ " = " ++ (showA env y)
+showA env (NodeGreater x y) = (showA env x) ++ " > " ++ (showA env y)
+showA env (NodeLess x y) = (showA env x) ++ " < " ++ (showA env y)
 showA env (NodeGeq x y) = (showA env x) ++ " >= " ++ (showA env y)
 showA env (NodeLeq x y) = (showA env x) ++ " <= " ++ (showA env y)
 showA env (Conj x y) = (showA env x) ++ " and " ++ (showA env y)
@@ -58,7 +60,7 @@ showA env (Disj x y) = "("++ (showA env x) ++ " or " ++ (showA env y)++")"
 showA env (Implies x y) = "(" ++ (showA env x) ++ " => " ++ (showA env y) ++")"
 showA _ (PredTrue) = "true"
 showA _ (PredFalse) = "false"
-showA env (Join x y) = (showA env x) ++ "." ++ (showA env y)
+showA env (Join x y) = "("++(showA env x) ++ ").(" ++ (showA env y) ++ ")"
 
 showDecls [d] = showDecl d
 showDecls (d:ds) = (showDecl d) ++ ";" ++ (showDecls ds)

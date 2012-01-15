@@ -28,6 +28,8 @@ import AST
 	']'    { TokRSquare $$ }
 	':='	{ TokAssign $$ }
 	'='	{ TokEq $$ }
+	'>'	{ TokGreater $$ }
+	'<'	{ TokLess $$ }
 	'>='	{ TokGeq $$ }
 	'<='	{ TokLeq $$ }
 	','	{ TokComma $$ }
@@ -45,7 +47,7 @@ import AST
 	'skip'  { TokSkip $$ }
 
 %left 'and'
-%nonassoc '=' '>=' '<='
+%nonassoc '=' '>=' '<=' '>' '<'
 %left '+' '-' 
 %left '*' '/' 'mod' 'div'
 %%
@@ -92,6 +94,8 @@ AssignError : AssignOk ',' {% failWithLoc $2 "assignment has more expressions th
 
 Expr : '-' Expr { Neg $2 }
 	| Expr 'and' Expr { Conj $1 $3 }
+	| Expr '>' Expr { NodeGreater $1 $3 }
+	| Expr '<' Expr { NodeLess $1 $3 }
 	| Expr '>=' Expr { NodeGeq $1 $3 }
 	| Expr '<=' Expr { NodeLeq $1 $3 }
 	| Expr '=' Expr { NodeEq $1 $3 }

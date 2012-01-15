@@ -11,8 +11,10 @@ tokens :-
 
   $white+				;
   "--".*				;
+  ">"                                   { \p s -> TokGreater p }
   ">="                                   { \p s -> TokGeq p }
   "<="                                   { \p s -> TokLeq p }
+  "<"                                   { \p s -> TokLess p }
   "="                                   { \p s -> TokEq p }
   ":="                                  { \p s -> TokAssign p }
   ","                                   { \p s -> TokComma p }
@@ -50,6 +52,8 @@ tokens :-
 data Token =
 	TokTrue AlexPosn |
 	TokFalse AlexPosn |
+	TokGreater AlexPosn |
+	TokLess AlexPosn |
 	TokGeq AlexPosn |
 	TokLeq AlexPosn |
 	TokIntType AlexPosn |
@@ -84,6 +88,8 @@ data Token =
 
 pos (TokTrue p) = p
 pos (TokFalse p) = p
+pos (TokGreater p) = p
+pos (TokLess p) = p
 pos (TokGeq p) = p
 pos (TokLeq p) = p
 pos (TokIntType p) = p
