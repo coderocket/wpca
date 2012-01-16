@@ -14,7 +14,9 @@ Y : Int
 }
 
 pred obligation {
-(State.x = Const.X and State.y = Const.Y) => (State.x.add[State.y].sub[State.x.add[State.y].sub[State.y]] = Const.Y and State.x.add[State.y].sub[State.y] = Const.X)
+(State.x = Const.X and State.y = Const.Y) => {
+State.x.add[State.y].sub[State.x.add[State.y].sub[State.y]] = Const.Y and State.x.add[State.y].sub[State.y] = Const.X
+}
 }
 
 check { obligation }

@@ -2,10 +2,18 @@ module WPC where
 import List
 import AST
 
-wp :: Node -> Node -> Node
+-- wp takes a statement and a postcondition in the form of a list of conjuncts and returns the weakest 
+-- precondition (in the form of a list of conjuncts) that is necessary for the statement to achieve all 
+-- the conjuncts in the postcondition.
+--
+-- we use the following theorem
+--
+-- wp s p1 and p2 and ... pn = (wp s p1) and (wp s p2) and ... and (wp s pn)
 
-wp (Assign (ns,es)) post = subst post (zip ns es)
-wp (Cond gs) post = BinOp Conj (altguards gs) (wpcond post gs)
+wp :: Node -> [Node] -> [Node]
+
+wp (Assign (ns,es)) post = map (subst (zip ns es)) post
+wp (Cond gs) post = (altguards gs) : (wpcond post gs)
 wp (Seq x y) post = wp x ((wp y) post)
 wp Skip post = post
 
@@ -39,29 +47,27 @@ wp (keeping inv do g1 -> s1 [] g2 -> s2 [] ... gn -> sn od, p) =
 
 -}
 
-wp (Loop inv gs) post = BinOp Conj inv (BinOp Conj (foldr (BinOp Conj) PredTrue (map f gs)) (BinOp Implies (BinOp Conj inv (foldr (BinOp Conj) PredTrue (map h gs))) post)) 
-  where f (g,s) = BinOp Implies (BinOp Conj inv g) (wp s inv) 
-        h (g,_) = Not g
+wp (Loop inv gs) post = inv : (foldr (++) [] (map f gs)) ++ (map (h gs) post) 
+  where f (g,s) = map (implies (inv `conj` g)) (wp s [inv])
+        h gs p = (inv `conj` (foldr conj PredTrue (map (Not . fst) gs))) `implies` p
+
 
 altguards [(g,s)] = g
 altguards ((g,s):gs) = BinOp Disj g (altguards gs)
 
-wpcond post [(g,s)] = BinOp Implies g (wp s post) 
-wpcond post ((g,s):gs) = BinOp Conj (BinOp Implies g (wp s post)) (wpcond post gs)
+wpcond post [] = []
+wpcond post ((g,s):gs) = (map (BinOp Implies g) (wp s post)) ++ (wpcond post gs)
 
-subst :: Node -> [(String,Node)] -> Node
+subst :: [(String,Node)] -> Node -> Node
 
-subst (Var vn) ne = 
-  case (lookup vn ne) of 
+subst env (Var vn) = 
+  case (lookup vn env) of 
 	(Just e) -> e
 	Nothing -> (Var vn)
-subst (TypeVar vn) ne = TypeVar vn
-subst (BinOp k x y) ne = BinOp k (subst x ne) (subst y ne)
-subst (Nat x) _ = Nat x
-subst (Neg x) ne = Neg (subst x ne) 
-subst PredTrue _ = PredTrue
-subst PredFalse _ = PredFalse
-subst (Not n) ne = Not (subst n ne)
+subst env (BinOp k x y) = BinOp k (subst env x) (subst env y)
+subst env (Neg x) = Neg (subst env x) 
+subst env (Not n) = Not (subst env n)
+subst _ x = x
 
 free :: [String] -> Node -> [String]
 

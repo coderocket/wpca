@@ -13,7 +13,9 @@ one sig Const {
 }
 
 pred obligation {
-(State.x = Const.X) => (State.x = Const.X)
+(State.x = Const.X) => {
+State.x = Const.X
+}
 }
 
 check { obligation }

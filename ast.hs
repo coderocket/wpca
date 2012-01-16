@@ -7,3 +7,11 @@ data BinOpKind = Plus| Minus | Times | Quotient | Div | Mod  | NodeEq | NodeGeq 
 declsToList ds = foldr (++) [] (map f ds) 
   where f (Declaration ds t) = foldr (\ x xs -> (x,t):xs) [] ds
 
+conj :: Node -> Node -> Node
+
+conj x y = BinOp Conj x y
+
+implies :: Node -> Node -> Node
+
+implies x y = BinOp Implies x y
+

@@ -13,7 +13,9 @@ one sig Const {
 }
 
 pred obligation {
-(State.x.add[3] >= State.y) => (State.x.add[3] >= State.y)
+(State.x.add[3] >= State.y) => {
+State.x.add[3] >= State.y
+}
 }
 
 check { obligation }

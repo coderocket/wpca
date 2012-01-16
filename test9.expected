@@ -14,7 +14,12 @@ Y : Int
 }
 
 pred obligation {
-(State.x = Const.X and State.y = Const.Y and State.x > 0 and State.y > 0) => ((State.y).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y > 0 and ((State.y).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y > 0 and State.x > State.y => (State.y).((State.x.sub[State.y]).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x.sub[State.y] > 0 and State.y > 0) and ((State.y).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y > 0 and State.y > State.x => (State.y.sub[State.x]).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y.sub[State.x] > 0) and true and ((State.y).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y > 0 and !(State.x > State.y) and !(State.y > State.x) and true => State.x = (Const.Y).((Const.X).(gcd)) and State.y = (Const.Y).((Const.X).(gcd))))
+(State.x = Const.X and State.y = Const.Y and State.x > 0 and State.y > 0) => {
+(State.y).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y > 0
+((State.y).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y > 0 and State.x > State.y => (State.y).((State.x.sub[State.y]).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x.sub[State.y] > 0 and State.y > 0)
+((State.y).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y > 0 and State.y > State.x => (State.y.sub[State.x]).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y.sub[State.x] > 0)
+((State.y).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y > 0 and !(State.x > State.y) and !(State.y > State.x) and true => State.x = (Const.Y).((Const.X).(gcd)) and State.y = (Const.Y).((Const.X).(gcd)))
+}
 }
 
 check { obligation }

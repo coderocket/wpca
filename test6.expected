@@ -13,7 +13,11 @@ one sig Const {
 }
 
 pred obligation {
-(State.x = Const.X) => ((true or true) and (true => (State.x.negate).(abs) = (Const.X).(abs)) and (true => (State.x).(abs) = (Const.X).(abs)))
+(State.x = Const.X) => {
+(true or true)
+(true => (State.x.negate).(abs) = (Const.X).(abs))
+(true => (State.x).(abs) = (Const.X).(abs))
+}
 }
 
 check { obligation }

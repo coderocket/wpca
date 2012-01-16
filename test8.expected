@@ -14,7 +14,12 @@ Y : Int
 }
 
 pred obligation {
-(State.x = Const.X and State.y = Const.Y) => ((State.x > State.y or (State.x = State.y or State.x < State.y)) and (State.x > State.y => State.x = Const.X and State.y = Const.Y and State.x = (State.y).((State.x).(max))) and (State.x = State.y => State.x = Const.X and State.y = Const.Y and State.x.add[State.y].div[2] = (State.y).((State.x).(max))) and (State.x < State.y => State.x = Const.X and State.y = Const.Y and State.y = (State.y).((State.x).(max))))
+(State.x = Const.X and State.y = Const.Y) => {
+(State.x > State.y or (State.x = State.y or State.x < State.y))
+(State.x > State.y => State.x = Const.X and State.y = Const.Y and State.x = (State.y).((State.x).(max)))
+(State.x = State.y => State.x = Const.X and State.y = Const.Y and State.x.add[State.y].div[2] = (State.y).((State.x).(max)))
+(State.x < State.y => State.x = Const.X and State.y = Const.Y and State.y = (State.y).((State.x).(max)))
+}
 }
 
 check { obligation }

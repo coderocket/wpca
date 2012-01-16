@@ -14,7 +14,9 @@ Y : Int
 }
 
 pred obligation {
-(State.x = Const.X and State.y = Const.Y) => (State.y = Const.Y and State.x = Const.X)
+(State.x = Const.X and State.y = Const.Y) => {
+State.y = Const.Y and State.x = Const.X
+}
 }
 
 check { obligation }

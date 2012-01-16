@@ -26,11 +26,12 @@ showA _ (Spec locals pre program post) =
 	++ "\n}\n\none sig Const {\n " ++ (showConstDecls cs)
 	++ "\n}\n\npred obligation {\n" 
 	++  "(" ++ (showA env pre) ++ ") => " 
-	++  "(" ++ (showA env (wp program post)) ++ ")"
+	++  "{\n" ++ (foldr f "" (map (showA env) (wp program [post]))) ++ "}"
 	++ "\n}\n\ncheck { obligation }\n"
   where ts = types locals
         cs = cvars ts pre
         env = ts ++ cs
+        f p ps = p ++ "\n" ++ ps
 
 showA _ (Locals ds) = showDecls ds 
 showA env (BinOp Plus x y) = (showA env x) ++ ".add[" ++ (showA env y) ++ "]"
