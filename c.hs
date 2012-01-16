@@ -49,6 +49,7 @@ showC (BinOp Disj x y) = "("++ (showC x) ++ " || " ++ (showC y) ++ ")"
 showC (BinOp Implies x y) = "(!(" ++ (showC x) ++ ") || " ++ (showC y) ++")"
 showC PredTrue = "1"
 showC PredFalse = "0"
+showC (Not x) = "!(" ++ (showC x) ++ ")"
 
 showDecls ds = foldr f "" (declsToList ds)
   where f (n,t) [] = (showC t) ++ " *" ++ n

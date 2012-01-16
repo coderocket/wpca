@@ -39,7 +39,9 @@ wp (keeping inv do g1 -> s1 [] g2 -> s2 [] ... gn -> sn od, p) =
 
 -}
 
-wp (Loop inv gs) post = BinOp Conj inv (foldr (BinOp Conj) PredTrue (map f gs)) where f (g,s) = BinOp Implies (BinOp Conj inv g) (wp s inv)
+wp (Loop inv gs) post = BinOp Conj inv (BinOp Conj (foldr (BinOp Conj) PredTrue (map f gs)) (BinOp Implies (BinOp Conj inv (foldr (BinOp Conj) PredTrue (map h gs))) post)) 
+  where f (g,s) = BinOp Implies (BinOp Conj inv g) (wp s inv) 
+        h (g,_) = Not g
 
 altguards [(g,s)] = g
 altguards ((g,s):gs) = BinOp Disj g (altguards gs)
@@ -59,6 +61,7 @@ subst (Nat x) _ = Nat x
 subst (Neg x) ne = Neg (subst x ne) 
 subst PredTrue _ = PredTrue
 subst PredFalse _ = PredFalse
+subst (Not n) ne = Not (subst n ne)
 
 free :: [String] -> Node -> [String]
 
@@ -74,4 +77,5 @@ free bound (Neg x) = free bound x
 free bound (Nat x) = []
 free bound PredTrue = []
 free bound PredFalse = []
+free bound (Not x) = free bound x
 

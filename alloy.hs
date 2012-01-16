@@ -61,6 +61,7 @@ showA env (BinOp Implies x y) = "(" ++ (showA env x) ++ " => " ++ (showA env y) 
 showA env (BinOp Join x y) = "("++(showA env x) ++ ").(" ++ (showA env y) ++ ")"
 showA _ (PredTrue) = "true"
 showA _ (PredFalse) = "false"
+showA env (Not x) = "!(" ++ (showA env x) ++ ")"
 
 showDecls [d] = showDecl d
 showDecls (d:ds) = (showDecl d) ++ ";" ++ (showDecls ds)

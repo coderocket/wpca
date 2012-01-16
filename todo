@@ -1,5 +1,12 @@
 
 - separate the alloy checks according to the code segments. this way it will be easier to understand which part of the program is incorrect
+
+we can use the theorem 
+
+wp(s,p and q) = wp(s,p) and wp(s,q) 
+
+to separate obligation checks into multiple alloy checks.
+
 - create a java module 
 - we need to deal with counterexamples that occur because of overflows. when alloy's latest version comes out we can use the 'no overflow' feature. should we do something else in the meantime?
 - should we check for a particular alloy version?
