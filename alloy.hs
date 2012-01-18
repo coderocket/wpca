@@ -22,16 +22,13 @@ showA _ (Spec locals pre program post) =
 	   "open util/integer\n\n"
         ++ "pred true { no none }\n"
         ++ "pred false { some none }\n\n"
-	++ "one sig State {\n " ++ (showA [] locals)  
-	++ "\n}\n\none sig Const {\n " ++ (showConstDecls cs)
-	++ "\n}\n\npred obligation {\n" 
-	++  "(" ++ (showA env pre) ++ ") => " 
-	++  "{\n" ++ (foldr f "" (map (showA env) (wp program [post]))) ++ "}"
-	++ "\n}\n\ncheck { obligation }\n"
+	++ "one sig State {\n " ++ (showA [] locals) ++ "\n}\n" 
+	++ "none sig Const {\n " ++ (showConstDecls cs) ++ "\n}\n"
+	++  (foldr (++) "" (map (showOblig env) (wp program [post]))) 
   where ts = types locals
         cs = cvars ts pre
         env = ts ++ cs
-        f p ps = p ++ "\n" ++ ps
+        showOblig e p = "check {\n" ++ (showA e (pre `implies` p)) ++ "\n}\n"
 
 showA _ (Locals ds) = showDecls ds 
 showA env (BinOp Plus x y) = (showA env x) ++ ".add[" ++ (showA env y) ++ "]"

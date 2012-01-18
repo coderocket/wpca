@@ -1,11 +1,15 @@
 
-- separate the alloy checks according to the code segments. this way it will be easier to understand which part of the program is incorrect
+- find or write a template mechanism for the part that generates the alloy code
+- is it beneficial to use cabal instead of make?
 
-we can use the theorem 
 
-wp(s,p and q) = wp(s,p) and wp(s,q) 
+- how do we integrate typechecking? as a separate tool? using an attribute grammar?
 
-to separate obligation checks into multiple alloy checks.
+
+- create a separate assertion for each code segment. 
+
+we may name the assertions according to the line number in which the code segment begins
+we can keep the line number of each statement in the corresponding node.
 
 - create a java module 
 - we need to deal with counterexamples that occur because of overflows. when alloy's latest version comes out we can use the 'no overflow' feature. should we do something else in the meantime?
@@ -20,6 +24,30 @@ hGetContents hout
 
 Done
 
+- what is the architecture of wpca? 
+
+see here:
+
+https://docs.google.com/drawings/d/1h_HZwbjf_Jyvit_fmtb6thQtI1TqhqZXDZqjQyWldF0/edit?hl=en_GB
+
+
+the general architecture is a central repository (the ast) on which various tools operate :
+  the lexer and parser build the repository
+  and the platform dependant tools generate code from the repository (should we model where they store their output or is that beyond the scope of the system?)
+  within each tool the architecture is specific to the tool. for example, the alloy tool
+  has a layered architecture :
+
+   first (lowest) layer: functions that calculate free variables, substitutions and so on
+   second layer: the weakest precondition calculator
+   third (highest) layer: generating the alloy code, invoking the analyzer and reporting the results.
+
+- separate the alloy checks according to the code segments. this way it will be easier to understand which part of the program is incorrect
+
+we can use the theorem 
+
+wp(s,p and q) = wp(s,p) and wp(s,q) 
+
+to separate obligation checks into multiple alloy checks.
 - support analysis functions and relations: if a name is not a state variable and it is not a constant (that is, it does not appear in an equality expression with a state variable) then we assume that it is a modeling variable.
 - put parenthesis around expressions 
 - move project to github
