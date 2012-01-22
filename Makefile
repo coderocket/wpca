@@ -16,6 +16,11 @@ cfgtoks.hs : cfgtoks.x
 cfg.hs : cfgtoks.x cfg.y
 	happy cfg.y
 
+AlloyCmdLine.class : AlloyCmdLine.java
+	javac -cp ".;../alloy4.1.10/alloy4.jar" AlloyCmdLine.java
+
+# alloy command: java -cp ".;../alloy4.1.10/alloy4.jar" AlloyCmdLine analysis.als
+
 .PHONY: clean test
 
 clean:

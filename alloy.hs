@@ -2,6 +2,15 @@ module Alloy where
 import List
 import AST
 import WPC
+import System.Process
+import System.Exit
+import IO
+
+runAnalyzer analysisFile = 
+  do (exitcode, out, err) <- readProcessWithExitCode "java" ["-cp","C:\\Documents and Settings\\davidf\\My Documents\\src\\alloy4.1.10\\alloy4.jar;.", "AlloyCmdLine", analysisFile] []
+     case exitcode of 
+      ExitSuccess -> return out
+      (ExitFailure _) -> return err 
 
 showAlloy :: [(String,[String])] -> Node -> Maybe (IO ())
 
@@ -10,6 +19,8 @@ showAlloy env ast =
      ls <- lookup "global.analysislibraries" env
      return $ do putStrLn ("writing analysis file to " ++ (head ns))
                  writeFile (head ns) ((showLibraries ls) ++ (showA [] ast))
+                 report <- runAnalyzer (head ns)
+		 putStrLn report
 
 showLibraries :: [String] -> String
 showLibraries ls = foldr (++) "" (map f ls) where f s = "open " ++ s ++ "\n"
@@ -23,7 +34,7 @@ showA _ (Spec locals pre program post) =
         ++ "pred true { no none }\n"
         ++ "pred false { some none }\n\n"
 	++ "one sig State {\n " ++ (showA [] locals) ++ "\n}\n" 
-	++ "none sig Const {\n " ++ (showConstDecls cs) ++ "\n}\n"
+	++ "one sig Const {\n " ++ (showConstDecls cs) ++ "\n}\n"
 	++  (foldr (++) "" (map (showOblig env) (wp program [post]))) 
   where ts = types locals
         cs = cvars ts pre
