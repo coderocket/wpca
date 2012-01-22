@@ -2,9 +2,12 @@ module AST where
 import Data.Tree
 import Lexer
 
+type Env = [(String,AST)]
+
 type AST = Tree (AlexPosn,Kind)
 
-data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | Eq | Geq | Leq | Conj | Disj | Implies | Join | Greater | Less | List | Not
+data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | Eq | Geq | Leq | Conj | Disj | Implies | Join | Greater | Less | List | Not | Break
+  deriving (Show)
 
 foldRose :: (a -> [b] -> b) -> Tree a -> b
 foldRose f (Node x ts) = f x (map (foldRose f) ts)
@@ -28,9 +31,15 @@ disj x y = Node (fst (rootLabel x), Disj) [x, y]
 
 implies :: AST -> AST -> AST
 
+implies x (Node (pos,String a) [y]) = 
+  annotate (a++ "_" ++ (showPos pos)) (Node (fst (rootLabel x), Implies) [x, y])
+
 implies x y = Node (fst (rootLabel x), Implies) [x, y]
 
 annotate :: String -> AST -> AST
+
+annotate s (Node (p,String a) [x]) = 
+  annotate (a++"_"++s) x
 
 annotate s x = Node (fst (rootLabel x), String s) [x]
 
@@ -39,4 +48,22 @@ true = Node (alexStartPos, AST.True) []
 
 false :: AST
 false = Node (alexStartPos, AST.False) []
+
+break :: AST
+break = Node (alexStartPos, Break) []
+
+skip :: AST
+skip = Node (alexStartPos, Skip) []
+
+wseq :: AST -> AST -> AST
+wseq x y = Node (alexStartPos, Seq) [x,y]
+
+assign :: String -> AST -> AST
+assign n e = Node (alexStartPos, Assign) [(string n), e]
+
+list :: AST -> AST
+list e = Node (alexStartPos, List) [e]
+
+string :: String -> AST
+string s = Node (alexStartPos, String s) []
 

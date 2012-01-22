@@ -2,6 +2,7 @@ module CLang where
 import List
 import AST
 import WPC
+import Data.Tree
 
 showCCode :: [(String,[String])] -> AST -> Maybe (IO ())
 
@@ -10,63 +11,81 @@ showCCode env ast =
      hs <- lookup "c.headerfile" env
      fn <- lookup "c.function" env
      return $ do putStrLn ("writing c header file to " ++ (head hs))
-{-
                  writeFile (head hs) (showCHeader (head fn) ast)
                  putStrLn ("writing c source file to " ++ (head cs))
                  writeFile (head cs) (showCSource (head fn) ast)
 
-showCHeader name (Spec locals _ _ _) =
-	"void " ++ name ++ "(" ++ (showC locals) ++ ");\n"
+showCHeader name (Node (_,Spec) (locals:_)) =
+	"void " ++ name ++ "(" ++ (showLocals locals) ++ ");\n"
 
-showCSource name (Spec locals pre program post) = 
-	"void " ++ name ++ "(" ++ (showC locals) ++ ")\n{\n" 
+showCSource name (Node (_,Spec) [locals, pre, program, post]) = 
+	"void " ++ name ++ "(" ++ (showLocals locals) ++ ")\n{\n" 
 	++ (showNewLocals locals) ++ "\n"
-	++ (showC program)
-	++ "\n}\n"
+	++ (showC env (transform program)) ++ "\n}\n"
+  where env = declsToList (subForest locals)
 
-showC (Locals ds) = showDecls ds 
-showC (Assign (ns,es)) = showAssign (zip ns es)
-showC (Cond gs) = showCond gs
-showC (Loop _ gs) = "while(1) {\n" ++ (showLoop gs) ++ "\n}\n"
-showC (Seq x y) = (showC x) ++ "\n" ++ (showC y)
-showC Skip = ";"
-showC (TypeVar vn) = vn
-showC (Var vn) = "*"++vn
-showC (Nat x) = (show x)
-showC (Neg x) = "-" ++ (showC x)
-showC (BinOp Plus x y) = "(" ++ (showC x) ++ "+" ++ (showC y) ++ ")"
-showC (BinOp Minus x y) = "(" ++ (showC x) ++ "-" ++ (showC y) ++ ")"
-showC (BinOp Times x y) = (showC x) ++ "*" ++ (showC y) 
-showC (BinOp Quotient x y) = (showC x) ++ " / " ++ (showC y)
-showC (BinOp Div x y) = (showC x) ++ " / " ++ (showC y) 
-showC (BinOp Mod x y) = (showC x) ++ " % " ++ (showC y)
-showC (BinOp NodeEq x y) = (showC x) ++ " == " ++ (showC y)
-showC (BinOp NodeGreater x y) = (showC x) ++ " > " ++ (showC y)
-showC (BinOp NodeLess x y) = (showC x) ++ " < " ++ (showC y)
-showC (BinOp NodeGeq x y) = (showC x) ++ " >= " ++ (showC y)
-showC (BinOp NodeLeq x y) = (showC x) ++ " <= " ++ (showC y)
-showC (BinOp Conj x y) = (showC x) ++ " && " ++ (showC y)
-showC (BinOp Disj x y) = "("++ (showC x) ++ " || " ++ (showC y) ++ ")"
-showC (BinOp Implies x y) = "(!(" ++ (showC x) ++ ") || " ++ (showC y) ++")"
-showC PredTrue = "1"
-showC PredFalse = "0"
-showC (Not x) = "!(" ++ (showC x) ++ ")"
+showC :: Env -> AST -> String
 
-showDecls ds = foldr f "" (declsToList ds)
-  where f (n,t) [] = (showC t) ++ " *" ++ n
-        f (n,t) ds = (showC t) ++ " *" ++ n ++ ", " ++ ds
+showC env = foldRose f 
+  where f (_,Seq) [x, y] = x ++ "\n" ++ y 
+        f (_,Skip) [] = ";"
+        f (_,Break) [] = "break;"
+        f (_,Type n) [] = n
+        f (_,String n) [] = case lookup n env of 
+          (Just _) -> "*"++ n
+          Nothing -> n
+        f (_,Int x) [] = (show x)
+        f (_,Neg) [x] = "-" ++ x
+        f (_, Plus) [x,y] = "(" ++ x ++ "+" ++ y ++ ")"
+        f (_, Minus) [x,y] = "(" ++ x ++ "-" ++ y ++ ")"
+        f (_, Times) [x,y] = x ++ "*" ++ y 
+        f (_, Quotient) [x,y] = x ++ " / " ++ y
+        f (_, Div) [x,y] = x ++ " / " ++ y 
+        f (_, Mod) [x,y] = x ++ " % " ++ y
+        f (_, Eq) [x,y] = x ++ " == " ++ y
+        f (_, Greater) [x,y] = x ++ " > " ++ y
+        f (_, Less) [x,y] = x ++ " < " ++ y
+        f (_, Geq) [x,y] = x ++ " >= " ++ y
+        f (_, Leq) [x,y] = x ++ " <= " ++ y
+        f (_, Conj) [x,y] = x ++ " && " ++ y
+        f (_, Disj) [x,y] = "("++ x ++ " || " ++ y ++ ")"
+        f (_, Implies) [x,y] = "(!(" ++ x ++ ") || " ++ y ++")"
+        f (_, AST.True) [] = "1"
+        f (_, AST.False) [] = "0"
+        f (_,Not) [x] = "!(" ++ x ++ ")"
+        f (_,Assign) [n,e] = n ++ " = " ++ e ++ ";"
+        f (_,Cond) [g,x,y] = "if (" ++ g ++ ") {\n" ++ x ++ "} else {\n" ++ y ++"}\n"
+        f (_,Loop) [gs] = "while(1) {\n" ++ gs ++ "\n}\n"
+        f (_,x) xs = show x
 
-showNewLocals (Locals ds) = foldr f "" (declsToList ds) 
-  where f (n,t) xs = (showC t) ++ " " ++ n ++ "_new;" ++ xs
+showLocals (Node (_,Locals) ds) = foldr f "" (declsToList ds) 
+  where f (n,t) [] = (showC [] t) ++ " *" ++ n
+        f (n,t) ds = (showC [] t) ++ " *" ++ n ++ ", " ++ ds
 
-showAssign aa = (assignNew aa) ++ (assignVars aa) 
-assignNew = foldr f "" where f (n,e) s = n++"_new = "++(showC e)++";\n"++s 
-assignVars = foldr f "" where f (n,_) s = "*"++n++" = " ++ n++"_new" ++";\n" ++ s
+showNewLocals (Node (_,Locals) ds) = foldr f "" (declsToList ds) 
+  where f (n,t) xs = (showC [] t) ++ " " ++ n ++ "_new;" ++ xs
+        
+transform :: AST -> AST
+transform = foldRose f
+  where f (_,Assign) [Node (_,List) ns, Node (_,List) es] = transformAssign ns es
+        f (_,Cond) gs = transformCond gs
+        f (pos,Loop) [_,(Node (_,List) gs)] = Node (pos, Loop) [transformLoop gs]
+        f (pos,kind) xs = Node (pos,kind) xs
 
-showCond = foldr f "" 
-  where f (g,s) gs = "if (" ++ (showC g) ++ ") {\n" ++ (showC s) ++ "} else {\n" ++ gs ++"}\n"
+transformAssign ns es = (assignNew (zip ns es)) `wseq` (assignVars (map h ns))
+  where h (Node (_,String s) []) = s
 
-showLoop = foldr f "" 
-  where f (g,s) "" = "if (" ++ (showC g) ++ ") {\n" ++ (showC s) ++ "} else break;" 
-        f (g,s) gs = "if (" ++ (showC g) ++ ") {\n" ++ (showC s) ++ "} else {\n" ++ gs ++ "}\n"
--}
+transformCond = foldr f skip
+  where f (Node (pos,List) [g,s]) gs = Node (pos,Cond) [g,s,gs] 
+
+transformLoop = foldr f AST.break
+  where f (Node (pos,List) [g,s]) gs = Node (pos,Cond) [g,s,gs]
+
+assignNew :: [(AST,AST)] -> AST
+assignNew = foldr f skip
+  where f (Node (_,String n)[], e) as = (assign (n++"_new") e) `wseq` as
+
+assignVars :: [String] -> AST
+assignVars = foldr f skip
+  where f n as = assign n (string (n++"_new")) `wseq` as
+

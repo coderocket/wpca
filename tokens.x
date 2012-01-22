@@ -126,4 +126,7 @@ pos (TokKeep p) = p
 
 content (p,v) = v
 
+showPos :: AlexPosn -> String
+showPos (AlexPn addr line col) = (show line) ++ "_" ++ (show col)
+
 }

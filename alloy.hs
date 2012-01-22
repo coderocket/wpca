@@ -5,8 +5,6 @@ import Data.Tree
 import WPC
 import Lexer
 
-type Env = [(String,AST)]
-
 showAlloy :: [(String,[String])] -> AST -> Maybe (IO ())
 
 showAlloy env ast =
@@ -29,11 +27,8 @@ showSpec (Node (_,Spec) [(Node (_,Locals) locals), pre, program, post]) =
         cs = cvars ts pre
         env = ts ++ cs
         showOblig e (Node (pos,String name) [p]) = "assert " ++ nm ++ " {\n" ++ (showA e (pre `implies` p)) ++ "\n}\ncheck " ++ nm ++ "\n\n"
-          where nm = name ++ "_at_" ++ (showPos pos)
+          where nm = name ++ "_" ++ (showPos pos)
         showOblig e p = "check {\n" ++ (showA e (pre `implies` p)) ++ "\n}\n"
-
-showPos :: AlexPosn -> String
-showPos (AlexPn addr line col) = "line_" ++ (show line) ++ "_col_" ++ (show col)
 
 showA :: Env -> AST -> String
 showA env = foldRose f 
