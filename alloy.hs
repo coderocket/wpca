@@ -4,6 +4,15 @@ import AST
 import Data.Tree
 import WPC
 import Lexer
+import System.Process
+import System.Exit
+import IO
+
+runAnalyzer analysisFile = 
+  do (exitcode, out, err) <- readProcessWithExitCode "java" ["-cp","C:\\Documents and Settings\\davidf\\My Documents\\src\\alloy4.1.10\\alloy4.jar;.", "AlloyCmdLine", analysisFile] []
+     case exitcode of 
+      ExitSuccess -> return out
+      (ExitFailure _) -> return err 
 
 showAlloy :: [(String,[String])] -> AST -> Maybe (IO ())
 
@@ -12,6 +21,8 @@ showAlloy env ast =
      ls <- lookup "global.analysislibraries" env
      return $ do putStrLn ("writing analysis file to " ++ (head ns))
                  writeFile (head ns) ((showLibraries ls) ++ (showSpec ast))
+                 report <- runAnalyzer (head ns)
+		 putStrLn report
 
 showLibraries :: [String] -> String
 showLibraries ls = foldr (++) "" (map f ls) where f s = "open " ++ s ++ "\n"

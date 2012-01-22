@@ -1,32 +1,39 @@
 
-- add location information to the ast nodes
 - refactor the code to reflect the architecture
-- change the code to use the new rose-tree like structure of the ast
+
+- improve the structure of the alloy module. 
+currently we identify the different kinds of variables in an ad-hoc manner.
+
+- change the configuration file syntax to support strings with space 
+  this requires start codes but they work only with a monad lexer. 
 
 - find or write a template mechanism for the part that generates the alloy code
-- is it beneficial to use cabal instead of make?
 
+- is it beneficial to use cabal instead of make?
 
 - how do we integrate typechecking? as a separate tool? using an attribute grammar?
 
+- create a java module 
+
+- we need to deal with counterexamples that occur because of overflows. when alloy's latest version comes out we can use the 'no overflow' feature. should we do something else in the meantime?
+- should we check for a particular alloy version?
+- how can we translate alloy's solution to a test case? 
+this of course depends on the platform. 
+
+- display the result of analysis in a way that is meaningful to the author of the program.
+
+Done
+
+- add location information to the ast nodes
+
+- change the code to use the new rose-tree like structure of the ast
 
 - create a separate assertion for each code segment. 
 
 we may name the assertions according to the line number in which the code segment begins
 we can keep the line number of each statement in the corresponding node.
 
-- create a java module 
-- we need to deal with counterexamples that occur because of overflows. when alloy's latest version comes out we can use the 'no overflow' feature. should we do something else in the meantime?
-- should we check for a particular alloy version?
-- how can we translate alloy's solution to a test case? 
-this of course depends on the platform. 
-
-- activate alloy from wpca and display the result in a way that is meaningful to the author of the program.
-
- (_, Just hout, _, _) <- createProcess (proc "ls" []){ std_out = CreatePipe }
-hGetContents hout
-
-Done
+- activate alloy from wpca
 
 - what is the architecture of wpca? 
 
