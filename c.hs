@@ -3,13 +3,14 @@ import List
 import AST
 import WPC
 
-showCCode :: [(String,[String])] -> Node -> Maybe (IO ())
+showCCode :: [(String,[String])] -> AST -> Maybe (IO ())
 
 showCCode env ast =
   do cs <- lookup "c.sourcefile" env
      hs <- lookup "c.headerfile" env
      fn <- lookup "c.function" env
      return $ do putStrLn ("writing c header file to " ++ (head hs))
+{-
                  writeFile (head hs) (showCHeader (head fn) ast)
                  putStrLn ("writing c source file to " ++ (head cs))
                  writeFile (head cs) (showCSource (head fn) ast)
@@ -68,4 +69,4 @@ showCond = foldr f ""
 showLoop = foldr f "" 
   where f (g,s) "" = "if (" ++ (showC g) ++ ") {\n" ++ (showC s) ++ "} else break;" 
         f (g,s) gs = "if (" ++ (showC g) ++ ") {\n" ++ (showC s) ++ "} else {\n" ++ gs ++ "}\n"
-
+-}

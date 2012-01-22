@@ -1,4 +1,8 @@
 
+- add location information to the ast nodes
+- refactor the code to reflect the architecture
+- change the code to use the new rose-tree like structure of the ast
+
 - find or write a template mechanism for the part that generates the alloy code
 - is it beneficial to use cabal instead of make?
 

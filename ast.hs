@@ -1,17 +1,42 @@
 module AST where
+import Data.Tree
+import Lexer
 
-data Node = Spec Node Node Node Node | Locals [ Node ] | Declaration [ String ] Node | Assign ([String],[Node]) | Loop Node [(Node, Node)] | Cond [(Node,Node)] | Seq Node Node | Skip | Var String | TypeVar String | Nat Int | Neg Node | PredTrue | PredFalse | Const Node | BinOp BinOpKind Node Node | Not Node
+type AST = Tree (AlexPosn,Kind)
 
-data BinOpKind = Plus| Minus | Times | Quotient | Div | Mod  | NodeEq | NodeGeq | NodeLeq | Conj | Disj | Implies | Join | NodeGreater | NodeLess  
+data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | Eq | Geq | Leq | Conj | Disj | Implies | Join | Greater | Less | List | Not
+
+foldRose :: (a -> [b] -> b) -> Tree a -> b
+foldRose f (Node x ts) = f x (map (foldRose f) ts)
+
+declsToList :: [AST] -> [(String, AST)]
 
 declsToList ds = foldr (++) [] (map f ds) 
-  where f (Declaration ds t) = foldr (\ x xs -> (x,t):xs) [] ds
+  where f (Node (_,Declaration) [(Node (_,List) ds), t]) = foldr (\ (Node (_,String x) []) xs -> (x,t):xs) [] ds
 
-conj :: Node -> Node -> Node
+not :: AST -> AST 
 
-conj x y = BinOp Conj x y
+not x = Node (fst (rootLabel x), Not) [x]
 
-implies :: Node -> Node -> Node
+conj :: AST -> AST -> AST
 
-implies x y = BinOp Implies x y
+conj x y = Node (fst (rootLabel x), Conj) [x, y]
+
+disj :: AST -> AST -> AST
+
+disj x y = Node (fst (rootLabel x), Disj) [x, y]
+
+implies :: AST -> AST -> AST
+
+implies x y = Node (fst (rootLabel x), Implies) [x, y]
+
+annotate :: String -> AST -> AST
+
+annotate s x = Node (fst (rootLabel x), String s) [x]
+
+true :: AST
+true = Node (alexStartPos, AST.True) []
+
+false :: AST
+false = Node (alexStartPos, AST.False) []
 

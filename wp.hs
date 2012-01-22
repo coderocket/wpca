@@ -1,6 +1,8 @@
 module WPC where
 import List
+import Data.Tree
 import AST
+import Lexer
 
 -- wp takes a statement and a postcondition in the form of a list of conjuncts and returns the weakest 
 -- precondition (in the form of a list of conjuncts) that is necessary for the statement to achieve all 
@@ -10,12 +12,14 @@ import AST
 --
 -- wp s p1 and p2 and ... pn = (wp s p1) and (wp s p2) and ... and (wp s pn)
 
-wp :: Node -> [Node] -> [Node]
 
-wp (Assign (ns,es)) post = map (subst (zip ns es)) post
-wp (Cond gs) post = (altguards gs) : (wpcond post gs)
-wp (Seq x y) post = wp x ((wp y) post)
-wp Skip post = post
+wp :: AST -> [AST] -> [AST]
+
+wp (Node (_,Assign) [Node (_,List) ns, Node (_,List) es]) post = 
+  map (subst (zip (map f ns) es)) post where f (Node (_,String n) []) = n
+wp (Node (_,Skip) []) post = post
+wp (Node (_,Seq) [x,y]) post = wp x ((wp y) post)
+wp (Node (_,Cond) gs) post = (altguards gs) : (wpcond post gs)
 
 {-
 
@@ -46,42 +50,38 @@ wp (keeping inv do g1 -> s1 [] g2 -> s2 [] ... gn -> sn od, p) =
   inv and (inv and g1 => wp(s1,inv) and ... (inv and gn => wp(sn,inv) and (inv and !g1 and !g2 and ... and !gn => p)
 
 -}
-
+{-
 wp (Loop inv gs) post = inv : (foldr (++) [] (map f gs)) ++ (map (h gs) post) 
   where f (g,s) = map (implies (inv `conj` g)) (wp s [inv])
         h gs p = (inv `conj` (foldr conj PredTrue (map (Not . fst) gs))) `implies` p
+-}
 
+wp (Node (_,Loop) [inv, (Node (_,List) gs)]) post = 
+  [annotate "loop_invariant" inv] ++ (foldr (++) [] (map f gs)) ++ (map ((annotate "loop_final").(h gs)) post)
+  where f (Node (_,List) [g,s]) = map ((annotate "guard").(implies (g `conj` inv))) (wp s [inv])
+        h gs p = (inv `conj` (foldr conj true (map (AST.not . head . subForest) gs))) `implies` p
 
-altguards [(g,s)] = g
-altguards ((g,s):gs) = BinOp Disj g (altguards gs)
+altguards = (annotate "allguards") . (foldr f false)
+   where f (Node (_,List) [g,s]) ps = g `disj` ps
 
-wpcond post [] = []
-wpcond post ((g,s):gs) = (map (BinOp Implies g) (wp s post)) ++ (wpcond post gs)
+wpcond post = foldr f [] 
+   where f (Node (_,List) [g,s]) ps = (map ((annotate "guard").(implies g)) (wp s post)) ++ ps
 
-subst :: [(String,Node)] -> Node -> Node
+subst :: [(String,AST)] -> AST -> AST
 
-subst env (Var vn) = 
-  case (lookup vn env) of 
+subst env (Node (p,String n) []) = 
+  case (lookup n env) of 
 	(Just e) -> e
-	Nothing -> (Var vn)
-subst env (BinOp k x y) = BinOp k (subst env x) (subst env y)
-subst env (Neg x) = Neg (subst env x) 
-subst env (Not n) = Not (subst env n)
-subst _ x = x
+	Nothing -> Node (p, String n) []
 
-free :: [String] -> Node -> [String]
+subst env (Node n ns) = Node n (map (subst env) ns) 
 
-free bound (Var vn) =
-  case (elemIndex vn bound) of
+free :: [String] -> AST -> [String]
+
+free bound (Node (_,String n) []) =
+  case (elemIndex n bound) of
     (Just i) -> []
-    Nothing -> [vn]
+    Nothing -> [n]
 
-free bound (TypeVar vn) = free bound (Var vn)
-
-free bound (BinOp _ x y) = (free bound x) `union` (free bound y)
-free bound (Neg x) = free bound x
-free bound (Nat x) = []
-free bound PredTrue = []
-free bound PredFalse = []
-free bound (Not x) = free bound x
+free bound (Node _ ns) = foldr union [] (map (free bound) ns)
 

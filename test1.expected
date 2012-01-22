@@ -7,15 +7,9 @@ pred false { some none }
 one sig State {
  x : Int
 }
-
 one sig Const {
  X : Int
 }
-
-pred obligation {
-(State.x = Const.X) => {
-State.x = Const.X
+check {
+(State.x = Const.X => State.x = Const.X)
 }
-}
-
-check { obligation }

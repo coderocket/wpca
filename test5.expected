@@ -7,16 +7,10 @@ pred false { some none }
 one sig State {
  x,y : Int
 }
-
 one sig Const {
  X : Int,
 Y : Int
 }
-
-pred obligation {
-(State.x = Const.X and State.y = Const.Y) => {
-State.x.add[State.y].sub[State.x.add[State.y].sub[State.y]] = Const.Y and State.x.add[State.y].sub[State.y] = Const.X
+check {
+(State.x = Const.X and State.y = Const.Y => State.x.add[State.y].sub[State.x.add[State.y].sub[State.y]] = Const.Y and State.x.add[State.y].sub[State.y] = Const.X)
 }
-}
-
-check { obligation }

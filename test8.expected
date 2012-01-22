@@ -7,19 +7,27 @@ pred false { some none }
 one sig State {
  x,y,z : Int
 }
-
 one sig Const {
  X : Int,
 Y : Int
 }
-
-pred obligation {
-(State.x = Const.X and State.y = Const.Y) => {
-(State.x > State.y or (State.x = State.y or State.x < State.y))
-(State.x > State.y => State.x = Const.X and State.y = Const.Y and State.x = (State.y).((State.x).(max)))
-(State.x = State.y => State.x = Const.X and State.y = Const.Y and State.x.add[State.y].div[2] = (State.y).((State.x).(max)))
-(State.x < State.y => State.x = Const.X and State.y = Const.Y and State.y = (State.y).((State.x).(max)))
+assert allguards_at_line_3_col_8 {
+(State.x = Const.X and State.y = Const.Y => (State.x > State.y or (State.x = State.y or (State.x < State.y or false))))
 }
-}
+check allguards_at_line_3_col_8
 
-check { obligation }
+assert guard_at_line_3_col_8 {
+(State.x = Const.X and State.y = Const.Y => (State.x > State.y => State.x = Const.X and State.y = Const.Y and State.x = (State.y).(State.x).max))
+}
+check guard_at_line_3_col_8
+
+assert guard_at_line_3_col_26 {
+(State.x = Const.X and State.y = Const.Y => (State.x = State.y => State.x = Const.X and State.y = Const.Y and State.x.add[State.y].div[2] = (State.y).(State.x).max))
+}
+check guard_at_line_3_col_26
+
+assert guard_at_line_3_col_54 {
+(State.x = Const.X and State.y = Const.Y => (State.x < State.y => State.x = Const.X and State.y = Const.Y and State.y = (State.y).(State.x).max))
+}
+check guard_at_line_3_col_54
+

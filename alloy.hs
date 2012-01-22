@@ -1,83 +1,88 @@
 module Alloy where
 import List
 import AST
+import Data.Tree
 import WPC
+import Lexer
 
-showAlloy :: [(String,[String])] -> Node -> Maybe (IO ())
+type Env = [(String,AST)]
+
+showAlloy :: [(String,[String])] -> AST -> Maybe (IO ())
 
 showAlloy env ast =
   do ns <- lookup "global.analysisfile" env
      ls <- lookup "global.analysislibraries" env
      return $ do putStrLn ("writing analysis file to " ++ (head ns))
-                 writeFile (head ns) ((showLibraries ls) ++ (showA [] ast))
+                 writeFile (head ns) ((showLibraries ls) ++ (showSpec ast))
 
 showLibraries :: [String] -> String
 showLibraries ls = foldr (++) "" (map f ls) where f s = "open " ++ s ++ "\n"
 
-type Env = [(String,Node)]
-
-showA :: Env -> Node -> String
-
-showA _ (Spec locals pre program post) = 
+showSpec (Node (_,Spec) [(Node (_,Locals) locals), pre, program, post]) = 
 	   "open util/integer\n\n"
         ++ "pred true { no none }\n"
         ++ "pred false { some none }\n\n"
-	++ "one sig State {\n " ++ (showA [] locals) ++ "\n}\n" 
-	++ "none sig Const {\n " ++ (showConstDecls cs) ++ "\n}\n"
+	++ "one sig State {\n " ++ (showDecls locals) ++ "\n}\n" 
+	++ "one sig Const {\n " ++ (showConstDecls cs) ++ "\n}\n"
 	++  (foldr (++) "" (map (showOblig env) (wp program [post]))) 
-  where ts = types locals
+  where ts = declsToList locals
         cs = cvars ts pre
         env = ts ++ cs
+        showOblig e (Node (pos,String name) [p]) = "assert " ++ nm ++ " {\n" ++ (showA e (pre `implies` p)) ++ "\n}\ncheck " ++ nm ++ "\n\n"
+          where nm = name ++ "_at_" ++ (showPos pos)
         showOblig e p = "check {\n" ++ (showA e (pre `implies` p)) ++ "\n}\n"
 
-showA _ (Locals ds) = showDecls ds 
-showA env (BinOp Plus x y) = (showA env x) ++ ".add[" ++ (showA env y) ++ "]"
-showA env (BinOp Minus x y) = (showA env x) ++ ".sub[" ++ (showA env y) ++ "]"
-showA env (BinOp Times x y) = (showA env x) ++ ".mul[" ++ (showA env y) ++"]"
-showA env (TypeVar vn) = if vn == "int" then "Int" else vn
+showPos :: AlexPosn -> String
+showPos (AlexPn addr line col) = "line_" ++ (show line) ++ "_col_" ++ (show col)
 
-showA env (Var vn) = 
-	case (lookup vn env) of
-		(Just (Const _)) -> "Const." ++ vn
-		(Just _) -> "State." ++ vn
-		Nothing -> vn
+showA :: Env -> AST -> String
+showA env = foldRose f 
+  where f (_, Plus) [x,y] = x ++ ".add[" ++ y ++ "]"
+        f (_, Minus) [x,y] = x ++ ".sub[" ++ y ++ "]"
+        f (_, Times) [x,y] = x ++ ".mul[" ++ y ++"]"
+        f (_, Div) [x,y] = x ++ ".div[" ++ y ++"]"
+        f (_, Mod) [x,y] = x ++ ".rem[" ++ y ++"]"
+        f (_, Quotient) [x,y] = "(" ++ x ++ " / " ++ y ++ ")"
+        f (_, Eq) [x,y] = x ++ " = " ++ y
+        f (_, Greater) [x,y] = x ++ " > " ++ y
+        f (_, Less) [x,y] = x ++ " < " ++ y
+        f (_, Geq) [x,y] = x ++ " >= " ++ y
+        f (_, Leq) [x,y] = x ++ " <= " ++ y
+        f (_, Conj) [x,y] = x ++ " and " ++ y
+        f (_, Disj) [x,y] = "("++ x ++ " or " ++ y++")"
+        f (_, Implies) [x,y] = "(" ++ x ++ " => " ++ y ++")"
+        f (_, Join) xs = (showJoin xs) 
+        f (_, Not) [x] = "!(" ++ x ++ ")"
+        f (_, Neg) [x] = x ++ ".negate"
+        f (_, Int x) [] = show x
+        f (_, AST.True) [] = "true"
+        f (_, AST.False) [] = "false"
+        f (_, Const) [x] = x
+        f (_, Type n) [] = if n == "int" then "Int" else n
+        f (_, String n) [] = 
+	   case (lookup n env) of
+		(Just (Node (_,Const) _)) -> "Const." ++ n
+		(Just _) -> "State." ++ n
+		Nothing -> n
 
-showA env (Const n) = showA env n
-showA _ (Nat x) = (show x)
-showA env (Neg x) = (showA env x) ++ ".negate"
-showA env (BinOp Quotient x y) = (showA env x) ++ " / " ++ (showA env y)
-showA env (BinOp Div x y) = (showA env x) ++ ".div[" ++ (showA env y) ++"]"
-showA env (BinOp Mod x y) = (showA env x) ++ ".rem[" ++ (showA env y) ++"]"
-showA env (BinOp NodeEq x y) = (showA env x) ++ " = " ++ (showA env y)
-showA env (BinOp NodeGreater x y) = (showA env x) ++ " > " ++ (showA env y)
-showA env (BinOp NodeLess x y) = (showA env x) ++ " < " ++ (showA env y)
-showA env (BinOp NodeGeq x y) = (showA env x) ++ " >= " ++ (showA env y)
-showA env (BinOp NodeLeq x y) = (showA env x) ++ " <= " ++ (showA env y)
-showA env (BinOp Conj x y) = (showA env x) ++ " and " ++ (showA env y)
-showA env (BinOp Disj x y) = "("++ (showA env x) ++ " or " ++ (showA env y)++")"
-showA env (BinOp Implies x y) = "(" ++ (showA env x) ++ " => " ++ (showA env y) ++")"
-showA env (BinOp Join x y) = "("++(showA env x) ++ ").(" ++ (showA env y) ++ ")"
-showA _ (PredTrue) = "true"
-showA _ (PredFalse) = "false"
-showA env (Not x) = "!(" ++ (showA env x) ++ ")"
+showJoin = foldr f ""
+  where f x [] = x 
+        f x xs = "(" ++ x ++ ")." ++ xs 
 
 showDecls [d] = showDecl d
 showDecls (d:ds) = (showDecl d) ++ ";" ++ (showDecls ds)
 
-showDecl (Declaration ds tp) = (showNames ds) ++ " : " ++ (showA [] tp)
-showNames [n] = n
-showNames (n:ns) = n ++ "," ++ (showNames ns)
+showDecl (Node (_,Declaration) [Node (_,List) ds, tp]) = (showNames ds) ++ " : " ++ (showA [] tp)
 
-showConstDecls :: [(String,Node)] -> String
+showNames [(Node (_,String n)[])] = n
+showNames ((Node (_,String n)[]):ns) = n ++ "," ++ (showNames ns)
+
+showConstDecls :: [(String,AST)] -> String
 showConstDecls [] = ""
 showConstDecls [(s,n)] = s ++ " : " ++ (showA [] n)
 showConstDecls ((s,n):ns) = s ++ " : " ++ (showA [] n) ++ ",\n" ++ (showConstDecls ns)
 
-types :: Node -> Env
-
-types (Locals ds) = declsToList ds
-
-cvars :: [(String, Node)] -> Node -> [(String, Node)]
+cvars :: Env -> AST -> Env
 
 -- To find the type of a constant (a.k.a model) variable 
 -- we look for either a top level equality expression or 
@@ -85,13 +90,13 @@ cvars :: [(String, Node)] -> Node -> [(String, Node)]
 -- the left hand side is a state variable and the right 
 -- hand side is the constant variable.
 
-cvars types (BinOp NodeEq (Var v) (Var c)) = 
+cvars types (Node (_,Eq) [(Node (_,String v) []), (Node (p,String c) [])]) = 
   case (lookup v types) of
     (Just t) -> case (lookup c types) of
-      Nothing -> [(c, Const t)]
+      Nothing -> [(c, Node (p, Const) [t])]
       (Just _) -> []
     Nothing -> []
 	
-cvars types (BinOp Conj x y) = (cvars types x) ++ (cvars types y)
+cvars types (Node (_, Conj) [x, y]) = (cvars types x) ++ (cvars types y)
 cvars types _ = [] 
 

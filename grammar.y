@@ -2,7 +2,7 @@
 module Grammar where
 import Data.Char
 import Lexer
--- import ParserMonad
+import Data.Tree
 import AST
 }
 
@@ -53,72 +53,76 @@ import AST
 %left '*' '/' 'mod' 'div'
 %%
 
-Spec : Locals Pre ';' Seq Post { Spec $1 $2 $4 $5 }
+Spec : Locals Pre ';' Seq Post { Node ($3,Spec) [$1, $2, $4, $5] }
 
-Locals : LocalsList { Locals $1 }
+Locals : LocalsList { Node (fst (rootLabel (head $1)), Locals) $1 }
 
 LocalsList : Declaration { [$1] } 
 	| LocalsList ';' Declaration { $3:$1 }
 
-Declaration : Names ':' Expr { Declaration (reverse $1) $3 }
+Declaration : Names ':' Expr { Node ($2, Declaration) [Node ($2, List) (reverse $1), $3] }
 
-Names : name { [content $1] }
-	| Names ',' name { (content $3):$1 }
+Names : name { [Node (fst $1, String (snd $1)) [] ] }
+	| Names ',' name { (Node (fst $3, String (snd $3)) []):$1 }
+
+Seq : Stmt { $1 } 
+	| Seq ';' Stmt { Node ($2,Seq) [$1,$3] }
+
+Stmt : If { $1 }
+    | Assign { $1 }
+    | Do { $1 }
+    | 'skip' { Node ($1,Skip) [] }
+
+Do : 'keeping' Expr 'do' GuardedCommands 'od' { Node ($1,Loop) [$2, Node ($3, List) (reverse $4)] }
+
+If : 'if' GuardedCommands 'fi' { Node ($1, Cond) (reverse $2) }
+
+GuardedCommands : Expr '->' Seq { [Node ($2,List) [$1,$3]] }
+    | GuardedCommands '[]' Expr '->' Seq { (Node ($2,List) [$3,$5]):$1 }
+
+Assign : AssignOk { makeAssign $1 }
+    | AssignError { $1 }
+
+AssignOk : name ':=' Expr { ([Node (fst $1, String (snd $1)) []], [$3]) }
+	| name ',' AssignOk ',' Expr { join (Node (fst $1, String (snd $1)) []) $3 $5 }
+
+AssignError : AssignOk ',' {% failWithLoc $2 "assignment has more expressions than variables." }
+    | name ',' AssignOk {% failWithLoc $2 "assignment has more variables than expressions." }
 
 Pre : '{' Expr '}' { $2 }
 
 Post : '{' Expr '}' { $2 }
 
-Seq : Stmt { $1 } 
-	| Seq ';' Stmt { Seq $1 $3 }
-
-Stmt : If { $1 }
-    | Assign { $1 }
-    | Do { $1 }
-    | 'skip' { Skip }
-
-Do : 'keeping' Expr 'do' GuardedCommands 'od' { Loop $2 (reverse $4) }
-
-If : 'if' GuardedCommands 'fi' { Cond (reverse $2) }
-
-GuardedCommands : Expr '->' Seq { [($1,$3)] }
-    | GuardedCommands '[]' Expr '->' Seq { ($3,$5):$1 }
-
-Assign : AssignOk  { Assign $1 }
-    | AssignError { $1 }
-
-AssignOk : name ':=' Expr { ([content $1], [$3]) }
-	| name ',' AssignOk ',' Expr { join  (content $1) $3 $5 }
-
-AssignError : AssignOk ',' {% failWithLoc $2 "assignment has more expressions than variables." }
-    | name ',' AssignOk {% failWithLoc $2 "assignment has more variables than expressions." }
-
-Expr : '-' Expr { Neg $2 }
-	| Expr 'and' Expr { BinOp Conj $1 $3 }
-	| Expr '>' Expr { BinOp NodeGreater $1 $3 }
-	| Expr '<' Expr { BinOp NodeLess $1 $3 }
-	| Expr '>=' Expr { BinOp NodeGeq $1 $3 }
-	| Expr '<=' Expr { BinOp NodeLeq $1 $3 }
-	| Expr '=' Expr { BinOp NodeEq $1 $3 }
-	| Expr '+' Expr { BinOp Plus $1 $3 }
-	| Expr '-' Expr { BinOp Minus $1 $3 }
-	| Expr '*' Expr { BinOp Times $1 $3 }
-	| Expr '/' Expr { BinOp Quotient $1 $3 }
-	| Expr 'mod' Expr { BinOp Mod $1 $3 }
-	| Expr 'div' Expr { BinOp Div $1 $3 }
+Expr : '-' Expr { Node ($1, Neg) [$2] }
+	| Expr 'and' Expr { Node ($2,Conj) [$1, $3] }
+	| Expr '>' Expr { Node ($2, Greater) [$1,$3] }
+	| Expr '<' Expr { Node ($2, Less) [$1,$3] }
+	| Expr '>=' Expr { Node ($2, Geq) [$1,$3] }
+	| Expr '<=' Expr { Node ($2, Leq) [$1,$3] }
+	| Expr '=' Expr { Node ($2, Eq) [$1,$3] }
+	| Expr '+' Expr { Node ($2, Plus) [$1,$3] }
+	| Expr '-' Expr { Node ($2, Minus) [$1,$3] }
+	| Expr '*' Expr { Node ($2, Times) [$1,$3] }
+	| Expr '/' Expr { Node ($2, Quotient) [$1,$3] }
+	| Expr 'mod' Expr { Node ($2, Mod) [$1,$3] }
+	| Expr 'div' Expr { Node ($2, Div) [$1,$3] }
 	| Factor { $1 }
 
-Factor: int { Nat (content $1) }
-	| name { Var (content $1) }
-	| 'int' { TypeVar "int" }
-	| 'true' { PredTrue }
-	| 'false' { PredFalse }
+Factor: int { Node (fst $1, Int (snd $1)) [] }
+	| name { Node (fst $1, String (snd $1)) [] }
+	| 'int' { Node ($1, Type "int") [] }
+	| 'true' { Node ($1, AST.True) [] }
+	| 'false' { Node ($1, AST.False) [] }
 	| '(' Expr ')' { $2 }
-	| Factor '[' ExprList ']' { foldr (BinOp Join) $1 $3 }
+	| Factor '[' ExprList ']' { Node ($2, Join) ($3++[$1]) }
 
 ExprList : Expr { [$1] }
 	| ExprList ',' Expr { $3:$1 }
 {
+
+makeAssign (names,exprs) = 
+  Node (p ,Assign) [Node (p, List) names, Node (p, List) exprs]  
+  where p = fst (rootLabel (head names)) 
 
 failWithLoc :: AlexPosn -> String -> Either String a
 failWithLoc pos err = Left $ err ++ " at " ++ (show line) ++ " line, " ++ (show column) ++ " column\n"
@@ -130,10 +134,11 @@ parseError (t:tokens) = failWithLoc (pos t) "parse error\n"
 
 parseError [] = Left "parse error at end of file\n"
 
-join :: String -> ([String],[Node]) -> Node -> ([String],[Node])
+join :: a -> ([a],[b]) -> b -> ([a],[b])
 join n (ns,es) e = (n:ns,es++[e])
 
-parse :: String -> IO (Either String Node) 
+parse :: String -> IO (Either String AST) 
 parse s = return (hParse (alexScanTokens s)) 
 
 }
+

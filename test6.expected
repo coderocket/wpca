@@ -7,17 +7,21 @@ pred false { some none }
 one sig State {
  x : Int
 }
-
 one sig Const {
  X : Int
 }
-
-pred obligation {
-(State.x = Const.X) => {
-(true or true)
-(true => (State.x.negate).(abs) = (Const.X).(abs))
-(true => (State.x).(abs) = (Const.X).(abs))
+assert allguards_at_line_3_col_6 {
+(State.x = Const.X => (true or (true or false)))
 }
-}
+check allguards_at_line_3_col_6
 
-check { obligation }
+assert guard_at_line_3_col_6 {
+(State.x = Const.X => (true => (State.x.negate).abs = (Const.X).abs))
+}
+check guard_at_line_3_col_6
+
+assert guard_at_line_4_col_6 {
+(State.x = Const.X => (true => (State.x).abs = (Const.X).abs))
+}
+check guard_at_line_4_col_6
+

@@ -7,18 +7,22 @@ pred false { some none }
 one sig State {
  x,y,z : Int
 }
-
 one sig Const {
  X : Int,
 Y : Int
 }
-
-pred obligation {
-(State.x = Const.X and State.y = Const.Y) => {
-(State.x >= State.y or State.y >= State.x)
-(State.x >= State.y => State.x = Const.X and State.y = Const.Y and State.x = (State.y).((State.x).(max)))
-(State.y >= State.x => State.x = Const.X and State.y = Const.Y and State.y = (State.y).((State.x).(max)))
+assert allguards_at_line_3_col_8 {
+(State.x = Const.X and State.y = Const.Y => (State.x >= State.y or (State.y >= State.x or false)))
 }
-}
+check allguards_at_line_3_col_8
 
-check { obligation }
+assert guard_at_line_3_col_8 {
+(State.x = Const.X and State.y = Const.Y => (State.x >= State.y => State.x = Const.X and State.y = Const.Y and State.x = (State.y).(State.x).max))
+}
+check guard_at_line_3_col_8
+
+assert guard_at_line_3_col_28 {
+(State.x = Const.X and State.y = Const.Y => (State.y >= State.x => State.x = Const.X and State.y = Const.Y and State.y = (State.y).(State.x).max))
+}
+check guard_at_line_3_col_28
+

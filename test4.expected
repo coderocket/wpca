@@ -7,15 +7,9 @@ pred false { some none }
 one sig State {
  x,y,z : Int
 }
-
 one sig Const {
  
 }
-
-pred obligation {
-(State.x.add[3] >= State.y) => {
-State.x.add[3] >= State.y
+check {
+(State.x.add[3] >= State.y => State.x.add[3] >= State.y)
 }
-}
-
-check { obligation }
