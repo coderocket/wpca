@@ -74,7 +74,7 @@ showA env = foldRose f
 
 showJoin = foldr f ""
   where f x [] = x 
-        f x xs = "(" ++ x ++ ")." ++ xs 
+        f x xs = "(" ++ x ++ ")." ++ "(" ++ xs ++ ")"
 
 showDecls [d] = showDecl d
 showDecls (d:ds) = (showDecl d) ++ ";" ++ (showDecls ds)
