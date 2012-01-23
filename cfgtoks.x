@@ -2,27 +2,34 @@
 module CFGLexer where
 }
 
-%wrapper "posn"
+%wrapper "monad"
 
 $digit = [0-9]
 $alpha = [a-zA]				-- alphabetic characters
-$printable = [a-zA-Z0-9\/\\\.]		
+$printable = [a-zA-Z0-9\/\\\.\;\-:]
+@name = $alpha ($alpha | $digit)*
+@string = \" ($printable | $white)* \" | $printable+
 
 tokens :-
 
-  $white+				;
-  "--".*				;
-  "="                                   { \p s -> TokEq p }
-  ","                                   { \p s -> TokComma p }
-  "["                                   { \p s -> TokLBra p }
-  "]"                                   { \p s -> TokRBra p }
-  $alpha [$alpha $digit]*		{ \p s -> TokName (p,s) }
-  $printable+ 				{ \p s -> TokString (p,s) }
+  $white+	{ skip }
+  "--".*	{ skip }
+  "="           { tok $ \p s -> TokEq p }
+  ","           { tok $ \p s -> TokComma p }
+  "["           { tok $ \p s -> TokLBra p }
+  "]"           { tok $ \p s -> TokRBra p }
+  @name		{ tok $ \p s -> TokName (p,s) }
+  @string	{ tok $ \p s -> TokString (p,s) }
 {
+
+tok t (pos, _, input) len = return (t pos (take len input))
+
+alexEOF = return TokEOF
 
 -- The token type:
 
 data Token =
+ 	TokEOF |
 	TokLBra AlexPosn |
 	TokRBra AlexPosn |
 	TokEq AlexPosn |

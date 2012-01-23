@@ -55,7 +55,18 @@ parseError (t:tokens) = failWithLoc (pos t) "parse error\n"
 
 parseError [] = Left "parse error at end of file\n"
 
-parseConfig s = return (do sec <- hParse (alexScanTokens s)  
+alexScanTokens s = runAlex s $ loop 
+  where loop = do hd <- alexMonadScan
+                  if hd == TokEOF 
+                  then return []
+                  else do tl <- loop
+                          return (hd:tl)
+
+scan s = case (alexScanTokens s) of 
+  (Left err) -> error err
+  (Right ts) -> ts
+
+parseConfig s = return (do sec <- hParse (scan s)  
                            return (foldr (++) [] (map sectionToEnv sec)))
 
 }

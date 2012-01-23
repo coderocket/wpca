@@ -4,9 +4,6 @@
 - improve the structure of the alloy module. 
 currently we identify the different kinds of variables in an ad-hoc manner.
 
-- change the configuration file syntax to support strings with space 
-  this requires start codes but they work only with a monad lexer. 
-
 - find or write a template mechanism for the part that generates the alloy code
 
 - is it beneficial to use cabal instead of make?
@@ -23,6 +20,9 @@ this of course depends on the platform.
 - display the result of analysis in a way that is meaningful to the author of the program.
 
 Done
+
+- change the configuration file syntax to support strings with space 
+  this requires start codes but they work only with a monad lexer. 
 
 - add location information to the ast nodes
 
