@@ -1,8 +1,14 @@
 
-sources = cfg.hs cfgtoks.hs c.hs alloy.hs main.hs ast.hs wp.hs tokens.hs grammar.hs 
+sources = anaOutToks.hs anaOut.hs cfg.hs cfgtoks.hs c.hs alloy.hs main.hs ast.hs wp.hs tokens.hs grammar.hs 
 
 wpca.exe : $(sources) 
 	ghc $(sources) -o wpca.exe
+
+anaOutToks.hs : anaOutToks.x
+	alex anaOutToks.x
+
+anaOut.hs : anaOutToks.x anaOut.y
+	happy anaOut.y
 
 tokens.hs : tokens.x
 	alex tokens.x

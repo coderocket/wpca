@@ -5,7 +5,7 @@ module CFGLexer where
 %wrapper "monad"
 
 $digit = [0-9]
-$alpha = [a-zA]				-- alphabetic characters
+$alpha = [a-zA-Z]				-- alphabetic characters
 $printable = [a-zA-Z0-9\/\\\.\;\-:]
 @name = $alpha ($alpha | $digit)*
 @string = \" ($printable | $white)* \" 

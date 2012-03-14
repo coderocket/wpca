@@ -56,7 +56,7 @@ public final class AlloyCmdLine {
         for(String filename:args) {
 
             // Parse+typecheck the model
-            System.out.println("Parsing+Typechecking "+filename+"...");
+            System.out.println("Parsing and Typechecking "+filename+" ...");
             Module world = CompUtil.parseEverything_fromFile(rep, null, filename);
 
             // Choose some default options for how you want to execute the commands
@@ -75,7 +75,7 @@ public final class AlloyCmdLine {
                     // This can be useful for debugging.
                     //
                     // You can also write the outcome to an XML file
-                    ans.writeXML("alloy_example_output.xml");
+                    // ans.writeXML("alloy_example_output.xml");
                     //
                     // You can then visualize the XML file by calling this:
 /*
