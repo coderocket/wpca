@@ -11,23 +11,23 @@ one sig Const {
  X : Int,
 Y : Int
 }
-assert loop_invariant_at_line_4_col_35 {
-(State.x = Const.X and State.y = Const.Y and State.x > 0 and State.y > 0 => (State.y).(State.x).gcd = (Const.Y).(Const.X).gcd and State.x > 0 and State.y > 0)
+assert loop_invariant_4_35 {
+(State.x = Const.X and State.y = Const.Y and State.x > 0 and State.y > 0 => (State.y).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y > 0)
 }
-check loop_invariant_at_line_4_col_35
+check loop_invariant_4_35
 
-assert guard_at_line_5_col_8 {
-(State.x = Const.X and State.y = Const.Y and State.x > 0 and State.y > 0 => (State.x > State.y and (State.y).(State.x).gcd = (Const.Y).(Const.X).gcd and State.x > 0 and State.y > 0 => (State.y).(State.x.sub[State.y]).gcd = (Const.Y).(Const.X).gcd and State.x.sub[State.y] > 0 and State.y > 0))
+assert guard_5_8 {
+(State.x = Const.X and State.y = Const.Y and State.x > 0 and State.y > 0 => (State.x > State.y and (State.y).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y > 0 => (State.y).((State.x.sub[State.y]).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x.sub[State.y] > 0 and State.y > 0))
 }
-check guard_at_line_5_col_8
+check guard_5_8
 
-assert guard_at_line_6_col_8 {
-(State.x = Const.X and State.y = Const.Y and State.x > 0 and State.y > 0 => (State.y > State.x and (State.y).(State.x).gcd = (Const.Y).(Const.X).gcd and State.x > 0 and State.y > 0 => (State.y.sub[State.x]).(State.x).gcd = (Const.Y).(Const.X).gcd and State.x > 0 and State.y.sub[State.x] > 0))
+assert guard_6_8 {
+(State.x = Const.X and State.y = Const.Y and State.x > 0 and State.y > 0 => (State.y > State.x and (State.y).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y > 0 => (State.y.sub[State.x]).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y.sub[State.x] > 0))
 }
-check guard_at_line_6_col_8
+check guard_6_8
 
-assert loop_final_at_line_4_col_35 {
-(State.x = Const.X and State.y = Const.Y and State.x > 0 and State.y > 0 => ((State.y).(State.x).gcd = (Const.Y).(Const.X).gcd and State.x > 0 and State.y > 0 and !(State.x > State.y) and !(State.y > State.x) and true => State.x = (Const.Y).(Const.X).gcd and State.y = (Const.Y).(Const.X).gcd))
+assert loop_final_4_35 {
+(State.x = Const.X and State.y = Const.Y and State.x > 0 and State.y > 0 => ((State.y).((State.x).(gcd)) = (Const.Y).((Const.X).(gcd)) and State.x > 0 and State.y > 0 and !(State.x > State.y) and !(State.y > State.x) and true => State.x = (Const.Y).((Const.X).(gcd)) and State.y = (Const.Y).((Const.X).(gcd))))
 }
-check loop_final_at_line_4_col_35
+check loop_final_4_35
 
