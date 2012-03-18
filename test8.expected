@@ -11,23 +11,23 @@ one sig Const {
  X : Int,
 Y : Int
 }
-assert allguards_at_line_3_col_8 {
+assert allguards_3_8 {
 (State.x = Const.X and State.y = Const.Y => (State.x > State.y or (State.x = State.y or (State.x < State.y or false))))
 }
-check allguards_at_line_3_col_8
+check allguards_3_8
 
-assert guard_at_line_3_col_8 {
-(State.x = Const.X and State.y = Const.Y => (State.x > State.y => State.x = Const.X and State.y = Const.Y and State.x = (State.y).(State.x).max))
+assert guard_3_8 {
+(State.x = Const.X and State.y = Const.Y => (State.x > State.y => State.x = Const.X and State.y = Const.Y and State.x = (State.y).((State.x).(max))))
 }
-check guard_at_line_3_col_8
+check guard_3_8
 
-assert guard_at_line_3_col_26 {
-(State.x = Const.X and State.y = Const.Y => (State.x = State.y => State.x = Const.X and State.y = Const.Y and State.x.add[State.y].div[2] = (State.y).(State.x).max))
+assert guard_3_26 {
+(State.x = Const.X and State.y = Const.Y => (State.x = State.y => State.x = Const.X and State.y = Const.Y and State.x.add[State.y].div[2] = (State.y).((State.x).(max))))
 }
-check guard_at_line_3_col_26
+check guard_3_26
 
-assert guard_at_line_3_col_54 {
-(State.x = Const.X and State.y = Const.Y => (State.x < State.y => State.x = Const.X and State.y = Const.Y and State.y = (State.y).(State.x).max))
+assert guard_3_54 {
+(State.x = Const.X and State.y = Const.Y => (State.x < State.y => State.x = Const.X and State.y = Const.Y and State.y = (State.y).((State.x).(max))))
 }
-check guard_at_line_3_col_54
+check guard_3_54
 

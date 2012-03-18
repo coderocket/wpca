@@ -57,8 +57,8 @@ wp (Loop inv gs) post = inv : (foldr (++) [] (map f gs)) ++ (map (h gs) post)
 -}
 
 wp (Node (_,Loop) [inv, (Node (_,List) gs)]) post = 
-  [annotate "loop_invariant" inv] ++ (foldr (++) [] (map f gs)) ++ (map ((annotate "loop_final").(h gs)) post)
-  where f (Node (_,List) [g,s]) = map ((annotate "guard").(implies (g `conj` inv))) (wp s [inv])
+  [annotate "loopinvariant" inv] ++ (foldr (++) [] (map f gs)) ++ (map ((annotate "loopfinal").(h gs)) post)
+  where f (Node (_,List) [g,s]) = map ((annotate "loopguard").(implies (g `conj` inv))) (wp s [inv])
         h gs p = (inv `conj` (foldr conj true (map (AST.not . head . subForest) gs))) `implies` p
 
 altguards = (annotate "allguards") . (foldr f false)

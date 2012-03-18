@@ -7,6 +7,7 @@ import Lexer
 import System.Process
 import System.Exit
 import IO
+import AnalysisOutputGrammar
 
 runAnalyzer classpath analysisFile = 
   do (exitcode, out, err) <- readProcessWithExitCode "java" ["-cp",classpath, "AlloyCmdLine", analysisFile] []
@@ -24,6 +25,9 @@ showAlloy env ast =
                  writeFile fn ((showLibraries ls) ++ (showSpec ast))
                  report <- runAnalyzer cp fn
 		 putStrLn report
+		 case (parseOutput report) of 
+                   (Left err) -> putStrLn ("failed to parse alloy's output: " ++ err)
+                   (Right checks) -> putStrLn (showOutput checks)
 
 showLibraries :: [String] -> String
 showLibraries ls = foldr (++) "" (map f ls) where f s = "open " ++ s ++ "\n"
@@ -74,7 +78,7 @@ showA env = foldRose f
 
 showJoin = foldr f ""
   where f x [] = x 
-        f x xs = "(" ++ x ++ ")." ++ xs 
+        f x xs = "(" ++ x ++ ")." ++ "(" ++ xs ++ ")"
 
 showDecls [d] = showDecl d
 showDecls (d:ds) = (showDecl d) ++ ";" ++ (showDecls ds)
@@ -107,3 +111,22 @@ cvars types (Node (_,Eq) [(Node (_,String v) []), (Node (p,String c) [])]) =
 cvars types (Node (_, Conj) [x, y]) = (cvars types x) ++ (cvars types y)
 cvars types _ = [] 
 
+showOutput :: [ ([Loc], Maybe Instance) ] -> String
+showOutput checks = foldr (++) "" (map f checks)
+  where f (path, Nothing) = ""
+        f (path, Just (Instance eqns)) = showCounterExample path eqns
+
+showCounterExample path eqns = "\nThe program fails to satisfy its postcondition given the following initial values:\n" ++ (showInst eqns) ++ "\nThe program will follow this path:\n" ++ (showPath path 1)
+
+showPath [] n = ""
+showPath (Loc kind line col:rest) n = (show n) ++ ". The " ++ kind ++ " at line " ++ (show line) ++ " column " ++ (show col) ++ "\n" ++ (showPath rest (n+1)) 
+
+showInst [] = ""
+showInst ((Set _ _):rest) = showInst rest
+showInst ((Relation kind name tuples):rest) = 
+  if kind == "State" 
+  then name ++ "=" ++ (show tuples) ++"\n" ++ (showInst rest)
+  else showInst rest
+
+
+        
