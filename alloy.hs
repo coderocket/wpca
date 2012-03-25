@@ -23,11 +23,13 @@ showAlloy env ast =
      [cp] <- lookup "alloy.classpath" env
      return $ do putStrLn ("writing analysis file to " ++ fn)
                  writeFile fn ((showLibraries ls) ++ (showSpec ast))
-                 report <- runAnalyzer cp fn
-		 putStrLn report
+                 -- report <- runAnalyzer cp fn
+		 -- putStrLn report
+{-
 		 case (parseOutput report) of 
                    (Left err) -> putStrLn ("failed to parse alloy's output: " ++ err)
                    (Right checks) -> putStrLn (showOutput checks)
+-}
 
 showLibraries :: [String] -> String
 showLibraries ls = foldr (++) "" (map f ls) where f s = "open " ++ s ++ "\n"
@@ -38,13 +40,12 @@ showSpec (Node (_,Spec) [(Node (_,Locals) locals), pre, program, post]) =
         ++ "pred false { some none }\n\n"
 	++ "one sig State {\n " ++ (showDecls locals) ++ "\n}\n" 
 	++ "one sig Const {\n " ++ (showConstDecls cs) ++ "\n}\n"
-	++  (foldr (++) "" (map (showOblig env) (wp program [post]))) 
+	++  (foldr (++) "" (map (showOblig env) (zip (wpx program [(post,[],"postcondition")]) [1..]))) 
   where ts = declsToList locals
         cs = cvars ts pre
         env = ts ++ cs
-        showOblig e (Node (pos,String name) [p]) = "assert " ++ nm ++ " {\n" ++ (showA e (pre `implies` p)) ++ "\n}\ncheck " ++ nm ++ "\n\n"
-          where nm = name ++ "_" ++ (showPos pos)
-        showOblig e p = "check {\n" ++ (showA e (pre `implies` p)) ++ "\n}\n"
+        showOblig e ((wp, path, goal), k) = "\n/*\ngoal: " ++ goal ++ "\npath: " ++ (show path) ++ "\n*/\n" ++ "assert " ++ nm ++ " {\n" ++ (showA e (pre `implies` wp)) ++ "\n}\ncheck " ++ nm ++ "\n\n"
+          where nm = "test"++(show k)
 
 showA :: Env -> AST -> String
 showA env = foldRose f 
