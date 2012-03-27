@@ -9,7 +9,6 @@ import AnalysisOutputLexer
 %error { parseError }
 %monad { Either String } 
 %token
-  '_'           { TokUnderscore $$ }
   '<:'          { TokRestrict $$ }
   ':'           { TokColon $$ }
   '.'           { TokDot $$ }
@@ -33,12 +32,7 @@ Output : word '.' word Checks { $4 }
 Checks : Checks Check { $2:$1 }
   | Check { [$1] }
 
-Check : 'check' Path ':' Result { ($2,$4) }
-
-Path : Path '_' Loc { $3:$1 }
-  | Loc { [$1] }
-
-Loc : word '_' number '_' number { Loc (snd $1) (snd $3) (snd $5) }
+Check : 'check' Word ':' Result { ($2,$4) }
 
 Result : 'unsat' { Nothing }
   | Instance { Just $1 }
@@ -74,9 +68,6 @@ data Instance = Instance [ Equation ]
 
 type Tuple = [ String ]
 
-data Loc = Loc String Int Int
-  deriving (Show)
-
 data Equation = Set String [ Tuple ] | Relation String String [ Tuple ] 
 	deriving (Show)
 
@@ -101,7 +92,9 @@ scan s = case (alexScanTokens s) of
   (Left err) -> error err
   (Right ts) -> ts
 
-parseOutput :: String -> Either String [([Loc], Maybe Instance)]
-parseOutput s = hParse (scan s)
+parseOutput :: String -> IO [(String, Maybe Instance)]
+parseOutput s = case hParse (scan s) of 
+  (Left err) -> fail err
+  (Right bs) -> return bs
 
 }

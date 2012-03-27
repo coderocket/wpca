@@ -66,7 +66,8 @@ scan s = case (alexScanTokens s) of
   (Left err) -> error err
   (Right ts) -> ts
 
-parseConfig s = return (do sec <- hParse (scan s)  
-                           return (foldr (++) [] (map sectionToEnv sec)))
+parseConfig s = case (hParse (scan s)) of
+  (Left err) -> fail err
+  (Right sec) -> return (foldr (++) [] (map sectionToEnv sec))
 
 }

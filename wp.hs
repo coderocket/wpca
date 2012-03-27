@@ -19,12 +19,12 @@ wpx (Node (_,Skip) []) post = post
 wpx (Node (_,Seq) [x,y]) post = wpx x ((wpx y) post)
 
 wpx (Node (pos,Cond) gs) post = ifdomain : guards 
-  where ifdomain = (foldr disj false (map guard gs), [pos], "one of the guards is satisfied.")
+  where ifdomain = (foldr disj false (map guard gs), [pos], "satisfy any of the guards")
         guards = [ (g `implies` p, (npos s):path, goal) |  (g,s) <- map tidy gs, (p, path, goal) <- wpx s post ]
 
 wpx (Node (pos,Loop) [inv, (Node (_,List) gs)]) post = establishInv : maintainInv ++ achieveGoals
-  where establishInv = (inv, [pos], "establish loop invariant")
-        maintainInv = [ ((g `conj` inv) `implies` p, (npos g):path, goal) | (g,s) <- map tidy gs, (p,path,goal) <- wpx s [(inv, [pos], "maintain loop invariant")] ]
+  where establishInv = (inv, [pos], "establish the loop invariant")
+        maintainInv = [ ((g `conj` inv) `implies` p, (npos g):path, goal) | (g,s) <- map tidy gs, (p,path,goal) <- wpx s [(inv, [pos], "maintain the loop invariant")] ]
         achieveGoals = [(inv `conj` (foldr conj true [ AST.not g | (g,_) <- map tidy gs ]) `implies` p, pos:path, goal) | (p,path,goal) <- post ]
 
 subst :: [(String,AST)] -> AST -> AST

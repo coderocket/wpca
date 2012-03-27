@@ -3,17 +3,18 @@ import List
 import AST
 import WPC
 import Data.Tree
+import LookupMonad
 
-showCCode :: [(String,[String])] -> AST -> Maybe (IO ())
+showCCode :: [(String,[String])] -> AST -> IO ()
 
 showCCode env ast =
-  do cs <- lookup "c.sourcefile" env
-     hs <- lookup "c.headerfile" env
-     fn <- lookup "c.function" env
-     return $ do putStrLn ("writing c header file to " ++ (head hs))
-                 writeFile (head hs) (showCHeader (head fn) ast)
-                 putStrLn ("writing c source file to " ++ (head cs))
-                 writeFile (head cs) (showCSource (head fn) ast)
+  do cs <- lookupM "c.sourcefile" env
+     hs <- lookupM "c.headerfile" env
+     fn <- lookupM "c.function" env
+     putStrLn ("writing c header file to " ++ (head hs))
+     writeFile (head hs) (showCHeader (head fn) ast)
+     putStrLn ("writing c source file to " ++ (head cs))
+     writeFile (head cs) (showCSource (head fn) ast)
 
 showCHeader name (Node (_,Spec) (locals:_)) =
 	"void " ++ name ++ "(" ++ (showLocals locals) ++ ");\n"

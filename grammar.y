@@ -137,8 +137,10 @@ parseError [] = Left "parse error at end of file\n"
 join :: a -> ([a],[b]) -> b -> ([a],[b])
 join n (ns,es) e = (n:ns,es++[e])
 
-parse :: String -> IO (Either String AST) 
-parse s = return (hParse (alexScanTokens s)) 
+parse :: String -> IO AST 
+parse s = case (hParse (alexScanTokens s)) of
+  (Left err) -> fail err
+  (Right ast) -> return ast 
 
 }
 

@@ -5,7 +5,7 @@ module AnalysisOutputLexer where
 %wrapper "monad"
 
 $digit = [0-9]
-$alpha = [a-zA-Z]			-- alphabetic characters
+$alpha = [a-zA-Z_]			-- alphabetic characters
 @num = \-? $digit +
 @word = $alpha ($alpha | $digit)* ("$" @num)?
 
@@ -22,7 +22,6 @@ tokens :-
   "->"          { tok $ \p s -> TokArrow p }
   "="           { tok $ \p s -> TokEq p }
   ","           { tok $ \p s -> TokComma p }
-  "_"           { tok $ \p s -> TokUnderscore p }
   "/"           { tok $ \p s -> TokSlash p }
   "{"           { tok $ \p s -> TokLCurl p }
   "}"           { tok $ \p s -> TokRCurl p }
@@ -49,7 +48,6 @@ data Token =
 	TokArrow AlexPosn |
 	TokEq AlexPosn |
 	TokComma AlexPosn |
-	TokUnderscore AlexPosn |
 	TokSlash AlexPosn |
 	TokLCurl AlexPosn |
 	TokRCurl AlexPosn |
@@ -67,7 +65,6 @@ pos (TokRestrict p) = p
 pos (TokArrow p) = p
 pos (TokEq p) = p
 pos (TokComma p) = p
-pos (TokUnderscore p) = p
 pos (TokUnsat p) = p
 pos (TokCheck p) = p
 pos (TokSlash p) = p

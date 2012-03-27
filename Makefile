@@ -1,5 +1,5 @@
 
-sources = anaOutToks.hs anaOut.hs cfg.hs cfgtoks.hs c.hs alloy.hs main.hs ast.hs wp.hs tokens.hs grammar.hs 
+sources = lookupm.hs anaOutToks.hs anaOut.hs cfg.hs cfgtoks.hs c.hs alloy.hs main.hs ast.hs wp.hs tokens.hs grammar.hs 
 
 wpca.exe : $(sources) 
 	ghc $(sources) -o wpca.exe

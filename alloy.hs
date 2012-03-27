@@ -8,44 +8,46 @@ import System.Process
 import System.Exit
 import IO
 import AnalysisOutputGrammar
+import LookupMonad
 
-runAnalyzer classpath analysisFile = 
-  do (exitcode, out, err) <- readProcessWithExitCode "java" ["-cp",classpath, "AlloyCmdLine", analysisFile] []
-     case exitcode of 
-      ExitSuccess -> return out
-      (ExitFailure _) -> return err 
+showAlloy :: [(String,[String])] -> AST -> IO ()
 
-showAlloy :: [(String,[String])] -> AST -> Maybe (IO ())
+showAlloy env (Node (_,Spec) [(Node (_,Locals) locals), pre, program, post]) =
+  do [fn] <- lookupM "alloy.analysisfile" env
+     ls <- lookupM "alloy.analysislibraries" env
+     [cp] <- lookupM "alloy.classpath" env
+     putStrLn ("writing analysis file to " ++ fn)
+     wpEnv <- calcWp program post
+     writeFile fn ((showLibraries ls) ++ (showSpec locals pre wpEnv))
+     report <- runAnalyzer cp fn
+     putStrLn report
+     checks <- parseOutput report
+     putStrLn (showOutput wpEnv checks)
 
-showAlloy env ast =
-  do [fn] <- lookup "alloy.analysisfile" env
-     ls <- lookup "alloy.analysislibraries" env
-     [cp] <- lookup "alloy.classpath" env
-     return $ do putStrLn ("writing analysis file to " ++ fn)
-                 writeFile fn ((showLibraries ls) ++ (showSpec ast))
-                 -- report <- runAnalyzer cp fn
-		 -- putStrLn report
-{-
-		 case (parseOutput report) of 
-                   (Left err) -> putStrLn ("failed to parse alloy's output: " ++ err)
-                   (Right checks) -> putStrLn (showOutput checks)
--}
+calcWp program post = 
+
+  return $ zip ["test"++(show i) | i <- [1..] ] (wpx program [(post,[],"satisfy the postcondition")])
 
 showLibraries :: [String] -> String
 showLibraries ls = foldr (++) "" (map f ls) where f s = "open " ++ s ++ "\n"
 
-showSpec (Node (_,Spec) [(Node (_,Locals) locals), pre, program, post]) = 
+showSpec locals pre wpEnv =
 	   "open util/integer\n\n"
         ++ "pred true { no none }\n"
         ++ "pred false { some none }\n\n"
 	++ "one sig State {\n " ++ (showDecls locals) ++ "\n}\n" 
 	++ "one sig Const {\n " ++ (showConstDecls cs) ++ "\n}\n"
-	++  (foldr (++) "" (map (showOblig env) (zip (wpx program [(post,[],"postcondition")]) [1..]))) 
+	++  (foldr (++) "" (map (showOblig env) wpEnv))
   where ts = declsToList locals
         cs = cvars ts pre
         env = ts ++ cs
-        showOblig e ((wp, path, goal), k) = "\n/*\ngoal: " ++ goal ++ "\npath: " ++ (show path) ++ "\n*/\n" ++ "assert " ++ nm ++ " {\n" ++ (showA e (pre `implies` wp)) ++ "\n}\ncheck " ++ nm ++ "\n\n"
-          where nm = "test"++(show k)
+        showOblig e (nm, (wp, path, goal)) = "\n/*\ngoal: " ++ goal ++ "\npath: " ++ (show path) ++ "\n*/\n" ++ "assert " ++ nm ++ " {\n" ++ (showA e (pre `implies` wp)) ++ "\n}\ncheck " ++ nm ++ "\n\n"
+
+runAnalyzer classpath analysisFile = 
+  do (exitcode, out, err) <- readProcessWithExitCode "java" ["-cp",classpath, "AlloyCmdLine", analysisFile] []
+     case exitcode of 
+      ExitSuccess -> return out
+      (ExitFailure _) -> fail err 
 
 showA :: Env -> AST -> String
 showA env = foldRose f 
@@ -112,15 +114,22 @@ cvars types (Node (_,Eq) [(Node (_,String v) []), (Node (p,String c) [])]) =
 cvars types (Node (_, Conj) [x, y]) = (cvars types x) ++ (cvars types y)
 cvars types _ = [] 
 
-showOutput :: [ ([Loc], Maybe Instance) ] -> String
-showOutput checks = foldr (++) "" (map f checks)
-  where f (path, Nothing) = ""
-        f (path, Just (Instance eqns)) = showCounterExample path eqns
+showOutput :: [(String, Oblig)] -> [ (String, Maybe Instance) ] -> String
+showOutput wpEnv checks = foldr (++) "" (map f checks)
+  where f (name, Nothing) = ""
+        f (name, Just (Instance eqns)) = "\nThere is a problem that requires your attention (" ++ name++").\n" ++ "When the program starts with the following initial state:\n\n" ++ (showInst eqns) ++ "\n" ++ (pathOf name wpEnv) 
 
-showCounterExample path eqns = "\nThe program fails to satisfy its postcondition given the following initial values:\n" ++ (showInst eqns) ++ "\nThe program will follow this path:\n" ++ (showPath path 1)
+pathOf :: String -> [(String, Oblig)] -> String
 
-showPath [] n = ""
-showPath (Loc kind line col:rest) n = (show n) ++ ". The " ++ kind ++ " at line " ++ (show line) ++ " column " ++ (show col) ++ "\n" ++ (showPath rest (n+1)) 
+pathOf name env = case (lookup name env) of 
+  Nothing -> "... Oops, there is no information about this check :("
+  (Just (_,path,goal)) -> "it fails to " ++ goal ++ "\n"
+                          ++ "while following the path that goes through\n" 
+                          ++ (showPath path) ++ "\n"
+
+showPath [] = ""
+showPath [(AlexPn _ line col)] = "Line " ++ (show line) ++ " column " ++ (show col) 
+showPath ((AlexPn _ line col):(r:rest)) = "Line " ++ (show line) ++ " column " ++ (show col) ++ " then\n" ++ (showPath (r:rest))
 
 showInst [] = ""
 showInst ((Set _ _):rest) = showInst rest
