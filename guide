@@ -1,0 +1,57 @@
+
+todo		Makefile
+
+WPCA Language
+
+ast.hs		Abstract syntax tree 
+Parser.y
+Lexer.x
+
+main.hs		Main program
+
+LookupMonad.hs	Error monad to I/O monad adaptor
+WPC.hs		Weakest precondition calculator	
+
+Alloy generator and code analyzer
+
+./Alloy/AlloyCmdLine.java	
+./Alloy/Generator.hs
+
+./Alloy/AnalysisOutput/Makefile	
+./Alloy/AnalysisOutput/Parser.y 	
+./Alloy/AnalysisOutput/Lexer.x	
+
+C code generator
+
+./CLang/Generator.hs	
+
+Tool Configuration 
+
+./Config/Makefile	
+./Config/Parser.y 	
+./Config/Lexer.x
+
+./wpca.cfg	Tool configuration file
+
+Tests
+
+test1.w		test1.expected
+test2.w		test2.expected
+test3.w		test3.expected
+test4.w		test4.expected
+test5.w		test5.expected
+test6.w		test6.expected
+test7.w		test7.expected
+test8.w		test8.expected
+test9.w		test9.expected
+test10.w	test10.expected
+test11.w	test11.expected
+test12.w	test12.expected
+test13.w	test13.expected
+test14.w	test14.expected
+test15.w	test15.expected
+
+Git configuration
+
+.gitignore
+./.git/config	
