@@ -1,5 +1,5 @@
 { 
-module Grammar where
+module Parser where
 import Data.Char
 import Lexer
 import Data.Tree

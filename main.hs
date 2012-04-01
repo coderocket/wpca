@@ -1,8 +1,8 @@
 
 module Main where
 import System
-import Grammar
-import CFGGrammar
+import Parser
+import Config.Parser
 import AST
 import Alloy
 import CLang

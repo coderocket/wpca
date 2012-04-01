@@ -7,7 +7,7 @@ import Lexer
 import System.Process
 import System.Exit
 import IO
-import AnalysisOutputGrammar
+import AnalysisOutputParser
 import LookupMonad
 
 showAlloy :: [(String,[String])] -> AST -> IO ()

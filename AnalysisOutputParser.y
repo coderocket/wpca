@@ -1,5 +1,5 @@
 { 
-module AnalysisOutputGrammar where
+module AnalysisOutputParser where
 import Data.Char
 import AnalysisOutputLexer
 }
