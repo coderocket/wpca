@@ -1,4 +1,4 @@
-module CLang where
+module CLang.Generator where
 import List
 import AST
 import WPC

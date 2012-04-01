@@ -5,7 +5,7 @@ import Parser
 import Config.Parser
 import AST
 import Alloy
-import CLang
+import CLang.Generator
 
 main = 
   do putStr versionMsg 
