@@ -1,11 +1,17 @@
 
-wpca.exe : Config Alloy 
+wpca.exe : Config Alloy Parser.hs Lexer.hs
 	ghc --make main.hs -o wpca.exe
 
 Config:
 	make -C Config
 Alloy:
 	make -C Alloy
+
+Parser.hs : Parser.y
+	happy Parser.y
+
+Lexer.hs : Lexer.x
+	alex Lexer.x
 
 .PHONY: Config Alloy clean test
 

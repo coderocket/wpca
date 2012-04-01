@@ -3,19 +3,19 @@ todo		Makefile
 
 WPCA Language
 
-ast.hs		Abstract syntax tree 
 Parser.y
 Lexer.x
+ast.hs			Abstract syntax tree 
 
-main.hs		Main program
+main.hs			Main program
 
-LookupMonad.hs	Error monad to I/O monad adaptor
-WPC.hs		Weakest precondition calculator	
+LookupMonad.hs		Error monad to I/O monad adaptor
 
 Alloy generator and code analyzer
 
 ./Alloy/AlloyCmdLine.java	
 ./Alloy/Generator.hs
+./Alloy/WPC.hs		Weakest precondition calculator	
 
 ./Alloy/AnalysisOutput/Makefile	
 ./Alloy/AnalysisOutput/Parser.y 	

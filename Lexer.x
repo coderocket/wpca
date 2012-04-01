@@ -1,5 +1,6 @@
 {
 module Lexer where
+import Loc
 }
 
 %wrapper "posn"
@@ -11,81 +12,84 @@ tokens :-
 
   $white+				;
   "--".*				;
-  ">"                                   { \p s -> TokGreater p }
-  ">="                                   { \p s -> TokGeq p }
-  "<="                                   { \p s -> TokLeq p }
-  "<"                                   { \p s -> TokLess p }
-  "="                                   { \p s -> TokEq p }
-  ":="                                  { \p s -> TokAssign p }
-  ","                                   { \p s -> TokComma p }
-  ";"                                   { \p s -> TokSemi p }
-  ":"                                   { \p s -> TokColon p }
-  "[]"                                  { \p s -> TokSquare p }
-  "["                                  { \p s -> TokLSquare p }
-  "]"                                  { \p s -> TokRSquare p }
-  "->"                                  { \p s -> TokArrow p }
-  "("                                   { \p s -> TokLB p }
-  ")"                                   { \p s -> TokRB p }
-  "{"                                   { \p s -> TokLCurl p }
-  "}"                                   { \p s -> TokRCurl p }
-  "+"                                   { \p s -> TokPlus p }
-  "-"                                   { \p s -> TokDash p }
-  "*"                                   { \p s -> TokStar p }
-  "/"                                   { \p s -> TokSlash p }
-  "true"                                { \p s -> TokTrue p }
-  "false"                               { \p s -> TokFalse p }
-  "int"                                 { \p s -> TokIntType p }
-  "and"                                 { \p s -> TokAnd p }
-  "div"                                 { \p s -> TokDiv p }
-  "mod"                                 { \p s -> TokMod p }
-  "do"                                  { \p s -> TokDo p }
-  "od"                                  { \p s -> TokOd p }
-  "if"                                  { \p s -> TokIf p }
-  "fi"                                  { \p s -> TokFi p }
-  "skip"                                { \p s -> TokSkip p }
-  "keeping"                             { \p s -> TokKeep p }
-  $alpha [$alpha $digit]*		{ \p s -> TokName (p,s) }
-  $digit+				{ \p s -> TokInt (p,(read s)) }
+  ">"                                   { \p s -> TokGreater (loc p) }
+  ">="                                   { \p s -> TokGeq (loc p) }
+  "<="                                   { \p s -> TokLeq (loc p) }
+  "<"                                   { \p s -> TokLess (loc p) }
+  "="                                   { \p s -> TokEq (loc p) }
+  ":="                                  { \p s -> TokAssign (loc p) }
+  ","                                   { \p s -> TokComma (loc p) }
+  ";"                                   { \p s -> TokSemi (loc p) }
+  ":"                                   { \p s -> TokColon (loc p) }
+  "[]"                                  { \p s -> TokSquare (loc p) }
+  "["                                  { \p s -> TokLSquare (loc p) }
+  "]"                                  { \p s -> TokRSquare (loc p) }
+  "->"                                  { \p s -> TokArrow (loc p) }
+  "("                                   { \p s -> TokLB (loc p) }
+  ")"                                   { \p s -> TokRB (loc p) }
+  "{"                                   { \p s -> TokLCurl (loc p) }
+  "}"                                   { \p s -> TokRCurl (loc p) }
+  "+"                                   { \p s -> TokPlus (loc p) }
+  "-"                                   { \p s -> TokDash (loc p) }
+  "*"                                   { \p s -> TokStar (loc p) }
+  "/"                                   { \p s -> TokSlash (loc p) }
+  "true"                                { \p s -> TokTrue (loc p) }
+  "false"                               { \p s -> TokFalse (loc p) }
+  "int"                                 { \p s -> TokIntType (loc p) }
+  "and"                                 { \p s -> TokAnd (loc p) }
+  "div"                                 { \p s -> TokDiv (loc p) }
+  "mod"                                 { \p s -> TokMod (loc p) }
+  "do"                                  { \p s -> TokDo (loc p) }
+  "od"                                  { \p s -> TokOd (loc p) }
+  "if"                                  { \p s -> TokIf (loc p) }
+  "fi"                                  { \p s -> TokFi (loc p) }
+  "skip"                                { \p s -> TokSkip (loc p) }
+  "keeping"                             { \p s -> TokKeep (loc p) }
+  $alpha [$alpha $digit]*		{ \p s -> TokName (loc p,s) }
+  $digit+				{ \p s -> TokInt (loc p,(read s)) }
 {
+
+loc :: AlexPosn -> Loc
+loc (AlexPn _ line col) = (line,col)
 
 -- The token type:
 
 data Token =
-	TokTrue AlexPosn |
-	TokFalse AlexPosn |
-	TokGreater AlexPosn |
-	TokLess AlexPosn |
-	TokGeq AlexPosn |
-	TokLeq AlexPosn |
-	TokIntType AlexPosn |
-	TokAnd AlexPosn |
-	TokPlus AlexPosn |
-	TokStar AlexPosn |
-	TokDash AlexPosn |
-	TokSlash AlexPosn |
-	TokDiv AlexPosn |
-	TokMod AlexPosn |
-	TokLB AlexPosn |
-	TokRB AlexPosn |
-	TokLCurl AlexPosn |
-	TokRCurl AlexPosn |
-	TokEq AlexPosn |
-	TokAssign AlexPosn |
-	TokComma AlexPosn |
-	TokName (AlexPosn,String) |
-	TokInt (AlexPosn,Int) |
-        TokSemi AlexPosn |
-        TokColon AlexPosn |
-	TokDo AlexPosn |
-	TokOd AlexPosn |
-	TokIf AlexPosn |
-	TokFi AlexPosn |
-	TokArrow AlexPosn |
-	TokLSquare AlexPosn |
-	TokRSquare AlexPosn |
-	TokSquare AlexPosn |
-	TokSkip AlexPosn |
-	TokKeep AlexPosn
+	TokTrue Loc |
+	TokFalse Loc |
+	TokGreater Loc |
+	TokLess Loc |
+	TokGeq Loc |
+	TokLeq Loc |
+	TokIntType Loc |
+	TokAnd Loc |
+	TokPlus Loc |
+	TokStar Loc |
+	TokDash Loc |
+	TokSlash Loc |
+	TokDiv Loc |
+	TokMod Loc |
+	TokLB Loc |
+	TokRB Loc |
+	TokLCurl Loc |
+	TokRCurl Loc |
+	TokEq Loc |
+	TokAssign Loc |
+	TokComma Loc |
+	TokName (Loc,String) |
+	TokInt (Loc,Int) |
+        TokSemi Loc |
+        TokColon Loc |
+	TokDo Loc |
+	TokOd Loc |
+	TokIf Loc |
+	TokFi Loc |
+	TokArrow Loc |
+	TokLSquare Loc |
+	TokRSquare Loc |
+	TokSquare Loc |
+	TokSkip Loc |
+	TokKeep Loc
 	deriving (Eq,Show)
 
 pos (TokTrue p) = p

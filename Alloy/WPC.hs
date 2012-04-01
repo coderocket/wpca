@@ -1,10 +1,10 @@
-module WPC where
+module Alloy.WPC where
 import List
 import Data.Tree
 import AST
-import Lexer
+import Loc
 
-type Oblig = (AST, [AlexPosn], String)
+type Oblig = (AST, [Loc], String)
 
 name (Node (_, String n) []) = n
 guard (Node (_,List) [g,s]) = g 

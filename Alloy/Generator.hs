@@ -2,8 +2,7 @@ module Alloy.Generator where
 import List
 import AST
 import Data.Tree
-import WPC
-import Lexer
+import Alloy.WPC
 import System.Process
 import System.Exit
 import IO
@@ -128,8 +127,8 @@ pathOf name env = case (lookup name env) of
                           ++ (showPath path) ++ "\n"
 
 showPath [] = ""
-showPath [(AlexPn _ line col)] = "Line " ++ (show line) ++ " column " ++ (show col) 
-showPath ((AlexPn _ line col):(r:rest)) = "Line " ++ (show line) ++ " column " ++ (show col) ++ " then\n" ++ (showPath (r:rest))
+showPath [(line,col)] = "Line " ++ (show line) ++ " column " ++ (show col) 
+showPath ((line,col):(r:rest)) = "Line " ++ (show line) ++ " column " ++ (show col) ++ " then\n" ++ (showPath (r:rest))
 
 showInst [] = ""
 showInst ((Set _ _):rest) = showInst rest

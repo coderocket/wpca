@@ -1,7 +1,6 @@
 module CLang.Generator where
 import List
 import AST
--- import WPC
 import Data.Tree
 import LookupMonad
 

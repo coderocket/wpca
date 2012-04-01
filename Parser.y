@@ -4,6 +4,7 @@ import Data.Char
 import Lexer
 import Data.Tree
 import AST
+import Loc
 }
 
 %name hParse
@@ -124,11 +125,8 @@ makeAssign (names,exprs) =
   Node (p ,Assign) [Node (p, List) names, Node (p, List) exprs]  
   where p = fst (rootLabel (head names)) 
 
-failWithLoc :: AlexPosn -> String -> Either String a
-failWithLoc pos err = Left $ err ++ " at " ++ (show line) ++ " line, " ++ (show column) ++ " column\n"
-    where
-    getLineCol (AlexPn _ line col) = (line,col)
-    (line, column) = getLineCol pos
+failWithLoc :: Loc -> String -> Either String a
+failWithLoc (line, col) err = Left $ err ++ " at " ++ (show line) ++ " line, " ++ (show col) ++ " column\n"
 
 parseError (t:tokens) = failWithLoc (pos t) "parse error\n"
 
