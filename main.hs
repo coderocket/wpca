@@ -4,7 +4,7 @@ import System
 import Parser
 import Config.Parser
 import AST
-import Alloy
+import Alloy.Generator
 import CLang.Generator
 
 main = 

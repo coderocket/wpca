@@ -1,5 +1,5 @@
 {
-module AnalysisOutputLexer where
+module Alloy.AnalysisOutput.Lexer where
 }
 
 %wrapper "monad"

@@ -1,4 +1,4 @@
-module Alloy where
+module Alloy.Generator where
 import List
 import AST
 import Data.Tree
@@ -7,7 +7,7 @@ import Lexer
 import System.Process
 import System.Exit
 import IO
-import AnalysisOutputParser
+import Alloy.AnalysisOutput.Parser
 import LookupMonad
 
 showAlloy :: [(String,[String])] -> AST -> IO ()
