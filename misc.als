@@ -18,6 +18,10 @@ fun abs[x:Int]:Int {
   x < 0 => 0.sub[x] else x
 }
 
+fun range[b,e:Int] : set Int {
+  { z : Int | z.gte[b] and z.lte[e] }
+}
+
 check { all x : Int | abs[abs[x]] = abs[x] }
 
 check { all x : Int | x >= 0 => abs[x] = x }

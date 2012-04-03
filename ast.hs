@@ -6,7 +6,7 @@ type Env = [(String,AST)]
 
 type AST = Tree (Loc,Kind)
 
-data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | Eq | Geq | Leq | Conj | Disj | Implies | Join | Greater | Less | List | Not | Break
+data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | Greater | Less | List | Not | Break | ArrayType String String | Range | Sum 
   deriving (Show)
 
 foldRose :: (a -> [b] -> b) -> Tree a -> b
