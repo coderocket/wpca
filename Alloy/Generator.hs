@@ -11,7 +11,7 @@ import LookupMonad
 
 showAlloy :: [(String,[String])] -> AST -> IO ()
 
-showAlloy env (Node (_,Spec) [(Node (_,Locals) locals), pre, program, post]) =
+showAlloy env (Node (_,Spec) [locals, pre, program, post]) =
   do [fn] <- lookupM "alloy.analysisfile" env
      ls <- lookupM "alloy.analysislibraries" env
      [cp] <- lookupM "alloy.classpath" env
@@ -30,14 +30,16 @@ calcWp program post =
 showLibraries :: [String] -> String
 showLibraries ls = foldr (++) "" (map f ls) where f s = "open " ++ s ++ "\n"
 
+showSpec :: AST -> AST -> [(String,Oblig)] -> String
+
 showSpec locals pre wpEnv =
 	   "open util/integer\n\n"
         ++ "pred true { no none }\n"
         ++ "pred false { some none }\n\n"
-	++ "one sig State {\n " ++ (showDecls locals) ++ "\n}\n" 
+	++ "one sig State {\n " ++ (showA [] locals) ++ "\n}\n" 
 	++ "one sig Const {\n " ++ (showConstDecls cs) ++ "\n}\n"
 	++  (foldr (++) "" (map (showOblig env) wpEnv))
-  where ts = declsToList locals
+  where ts = declsToList (subForest locals)
         cs = cvars ts pre
         env = ts ++ cs
         showOblig e (nm, (wp, path, goal)) = "\n/*\ngoal: " ++ goal ++ "\npath: " ++ (show path) ++ "\n*/\n" ++ "assert " ++ nm ++ " {\n" ++ (showA e (pre `implies` wp)) ++ "\n}\ncheck " ++ nm ++ "\n\n"
@@ -57,6 +59,7 @@ showA env = foldRose f
         f (_, Mod) [x,y] = x ++ ".rem[" ++ y ++"]"
         f (_, Quotient) [x,y] = "(" ++ x ++ " / " ++ y ++ ")"
         f (_, Eq) [x,y] = x ++ " = " ++ y
+        f (_, NotEq) [x,y] = x ++ " != " ++ y
         f (_, Greater) [x,y] = x ++ " > " ++ y
         f (_, Less) [x,y] = x ++ " < " ++ y
         f (_, Geq) [x,y] = x ++ " >= " ++ y
@@ -64,6 +67,7 @@ showA env = foldRose f
         f (_, Conj) [x,y] = x ++ " and " ++ y
         f (_, Disj) [x,y] = "("++ x ++ " or " ++ y++")"
         f (_, Implies) [x,y] = "(" ++ x ++ " => " ++ y ++")"
+        f (_, Range) [x,y] = "range[" ++ x ++ "," ++ y ++ "]"
         f (_, Join) xs = (showJoin xs) 
         f (_, Not) [x] = "!(" ++ x ++ ")"
         f (_, Neg) [x] = x ++ ".negate"
@@ -71,7 +75,14 @@ showA env = foldRose f
         f (_, AST.True) [] = "true"
         f (_, AST.False) [] = "false"
         f (_, Const) [x] = x
-        f (_, Type n) [] = if n == "int" then "Int" else n
+        f (_, Type "int") [] = "Int"
+        f (_, Type "nat") [] = "Int"
+        f (_, Type n) [] = n
+        f (_, ArrayType _ t) [] = if t == "int" then "seq Int" else ("seq " ++ t)
+        f (_, Locals) decls = showDecls decls
+	f (_, Declaration) [names, typ] = names ++ " : " ++ typ
+        f (_, List) names = showNames names
+        f (_, Sum) [decls, e] = "(sum " ++ decls ++ " | " ++ e ++ ")"
         f (_, String n) [] = 
 	   case (lookup n env) of
 		(Just (Node (_,Const) _)) -> "Const." ++ n
@@ -82,13 +93,15 @@ showJoin = foldr f ""
   where f x [] = x 
         f x xs = "(" ++ x ++ ")." ++ "(" ++ xs ++ ")"
 
-showDecls [d] = showDecl d
-showDecls (d:ds) = (showDecl d) ++ ";" ++ (showDecls ds)
+showDecls = foldr f ""  
+  where 
+    f d [] = d 
+    f d ds = d ++ "," ++ ds
 
-showDecl (Node (_,Declaration) [Node (_,List) ds, tp]) = (showNames ds) ++ " : " ++ (showA [] tp)
-
-showNames [(Node (_,String n)[])] = n
-showNames ((Node (_,String n)[]):ns) = n ++ "," ++ (showNames ns)
+showNames = foldr f "" 
+  where 
+    f n [] = n 
+    f n ns = n ++ "," ++ ns
 
 showConstDecls :: [(String,AST)] -> String
 showConstDecls [] = ""

@@ -15,6 +15,9 @@ import Loc
 	'true'	{ TokTrue $$ }
 	'false'	{ TokFalse $$ }
 	'int'	{ TokIntType $$ }
+	'nat'	{ TokNatType $$ }
+	'array'	{ TokArray $$ }
+	'of'	{ TokOf $$ }
 	int	{ TokInt $$ }
 	name	{ TokName $$ }
 	'+'	{ TokPlus $$ }
@@ -25,10 +28,11 @@ import Loc
 	')'	{ TokRB $$ }
 	'{'	{ TokLCurl $$ }
 	'}'	{ TokRCurl $$ }
-	'['    { TokLSquare $$ }
-	']'    { TokRSquare $$ }
+	'['    	{ TokLSquare $$ }
+	']'    	{ TokRSquare $$ }
 	':='	{ TokAssign $$ }
 	'='	{ TokEq $$ }
+	'!='	{ TokNotEq $$ }
 	'>'	{ TokGreater $$ }
 	'<'	{ TokLess $$ }
 	'>='	{ TokGeq $$ }
@@ -36,7 +40,9 @@ import Loc
 	','	{ TokComma $$ }
 	';'     { TokSemi $$ }
 	':'     { TokColon $$ }
-	'and'    { TokAnd $$ }
+	'..'    { TokRange $$ }
+	'|'     { TokBar $$ }
+	'and'   { TokAnd $$ }
 	'do'    { TokDo $$ }
 	'od'    { TokOd $$ }
 	'if'    { TokIf $$ }
@@ -46,10 +52,12 @@ import Loc
 	'mod'	{ TokMod $$ }
 	'div'	{ TokDiv $$ }
 	'skip'  { TokSkip $$ }
+	'sum'  	{ TokSum $$ }
 	'keeping'  { TokKeep $$ }
 
 %left 'and'
-%nonassoc '=' '>=' '<=' '>' '<'
+%nonassoc '=' '>=' '<=' '>' '<' '!='
+%nonassoc '..' SUM
 %left '+' '-' 
 %left '*' '/' 'mod' 'div'
 %%
@@ -74,7 +82,12 @@ Stmt : If { $1 }
     | Do { $1 }
     | 'skip' { Node ($1,Skip) [] }
 
-Do : 'keeping' Expr 'do' GuardedCommands 'od' { Node ($1,Loop) [$2, Node ($3, List) (reverse $4)] }
+Do : DoOk { $1 }
+	| DoError { $1 }
+
+DoOk : 'keeping' Expr 'do' GuardedCommands 'od' { Node ($1,Loop) [$2, Node ($3, List) (reverse $4)] }
+
+DoError : 'do' {% failWithLoc $1 "missing invariant clause." }
 
 If : 'if' GuardedCommands 'fi' { Node ($1, Cond) (reverse $2) }
 
@@ -101,21 +114,34 @@ Expr : '-' Expr { Node ($1, Neg) [$2] }
 	| Expr '>=' Expr { Node ($2, Geq) [$1,$3] }
 	| Expr '<=' Expr { Node ($2, Leq) [$1,$3] }
 	| Expr '=' Expr { Node ($2, Eq) [$1,$3] }
+	| Expr '!=' Expr { Node ($2, NotEq) [$1,$3] }
 	| Expr '+' Expr { Node ($2, Plus) [$1,$3] }
 	| Expr '-' Expr { Node ($2, Minus) [$1,$3] }
 	| Expr '*' Expr { Node ($2, Times) [$1,$3] }
 	| Expr '/' Expr { Node ($2, Quotient) [$1,$3] }
 	| Expr 'mod' Expr { Node ($2, Mod) [$1,$3] }
 	| Expr 'div' Expr { Node ($2, Div) [$1,$3] }
+	| Expr '..' Expr { Node ($2, Range) [$1,$3] }
+	| Comprehension { $1 }
 	| Factor { $1 }
 
-Factor: int { Node (fst $1, Int (snd $1)) [] }
-	| name { Node (fst $1, String (snd $1)) [] }
-	| 'int' { Node ($1, Type "int") [] }
+Comprehension : 'sum' Locals '|' Expr %prec SUM { Node ($1, Sum) [$2,$4] } 
+
+Factor: Type { $1 }
+	| int { Node (fst $1, Int (snd $1)) [] }
 	| 'true' { Node ($1, AST.True) [] }
 	| 'false' { Node ($1, AST.False) [] }
+	| name { Node (fst $1, String (snd $1)) [] }
 	| '(' Expr ')' { $2 }
 	| Factor '[' ExprList ']' { Node ($2, Join) ($3++[$1]) }
+
+Type : BasicType { Node (fst $1, Type (snd $1)) [] } 
+	| CompoundType { $1 }
+
+BasicType : 'int' { ($1,"int") }
+	| 'nat' { ($1,"nat") }
+
+CompoundType : 'array' 'of' name BasicType { Node ($1, ArrayType (snd $3) (snd $4)) [] }
 
 ExprList : Expr { [$1] }
 	| ExprList ',' Expr { $3:$1 }

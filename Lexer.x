@@ -17,9 +17,11 @@ tokens :-
   "<="                                   { \p s -> TokLeq (loc p) }
   "<"                                   { \p s -> TokLess (loc p) }
   "="                                   { \p s -> TokEq (loc p) }
+  "!="                                   { \p s -> TokNotEq (loc p) }
   ":="                                  { \p s -> TokAssign (loc p) }
   ","                                   { \p s -> TokComma (loc p) }
   ";"                                   { \p s -> TokSemi (loc p) }
+  ".."                                   { \p s -> TokRange (loc p) }
   ":"                                   { \p s -> TokColon (loc p) }
   "[]"                                  { \p s -> TokSquare (loc p) }
   "["                                  { \p s -> TokLSquare (loc p) }
@@ -33,9 +35,11 @@ tokens :-
   "-"                                   { \p s -> TokDash (loc p) }
   "*"                                   { \p s -> TokStar (loc p) }
   "/"                                   { \p s -> TokSlash (loc p) }
+  "|"                                   { \p s -> TokBar (loc p) }
   "true"                                { \p s -> TokTrue (loc p) }
   "false"                               { \p s -> TokFalse (loc p) }
   "int"                                 { \p s -> TokIntType (loc p) }
+  "nat"                                 { \p s -> TokNatType (loc p) }
   "and"                                 { \p s -> TokAnd (loc p) }
   "div"                                 { \p s -> TokDiv (loc p) }
   "mod"                                 { \p s -> TokMod (loc p) }
@@ -44,6 +48,9 @@ tokens :-
   "if"                                  { \p s -> TokIf (loc p) }
   "fi"                                  { \p s -> TokFi (loc p) }
   "skip"                                { \p s -> TokSkip (loc p) }
+  "sum"                                 { \p s -> TokSum (loc p) }
+  "array"                               { \p s -> TokArray (loc p) }
+  "of"                                  { \p s -> TokOf (loc p) }
   "keeping"                             { \p s -> TokKeep (loc p) }
   $alpha [$alpha $digit]*		{ \p s -> TokName (loc p,s) }
   $digit+				{ \p s -> TokInt (loc p,(read s)) }
@@ -55,6 +62,7 @@ loc (AlexPn _ line col) = (line,col)
 -- The token type:
 
 data Token =
+	TokRange Loc |
 	TokTrue Loc |
 	TokFalse Loc |
 	TokGreater Loc |
@@ -62,6 +70,7 @@ data Token =
 	TokGeq Loc |
 	TokLeq Loc |
 	TokIntType Loc |
+	TokNatType Loc |
 	TokAnd Loc |
 	TokPlus Loc |
 	TokStar Loc |
@@ -74,6 +83,7 @@ data Token =
 	TokLCurl Loc |
 	TokRCurl Loc |
 	TokEq Loc |
+	TokNotEq Loc |
 	TokAssign Loc |
 	TokComma Loc |
 	TokName (Loc,String) |
@@ -84,14 +94,19 @@ data Token =
 	TokOd Loc |
 	TokIf Loc |
 	TokFi Loc |
+	TokOf Loc |
+	TokArray Loc |
 	TokArrow Loc |
 	TokLSquare Loc |
 	TokRSquare Loc |
 	TokSquare Loc |
 	TokSkip Loc |
+	TokSum Loc |
+	TokBar Loc |
 	TokKeep Loc
 	deriving (Eq,Show)
 
+pos (TokRange p) = p
 pos (TokTrue p) = p
 pos (TokFalse p) = p
 pos (TokGreater p) = p
@@ -99,6 +114,7 @@ pos (TokLess p) = p
 pos (TokGeq p) = p
 pos (TokLeq p) = p
 pos (TokIntType p) = p
+pos (TokNatType p) = p
 pos (TokAnd p) = p
 pos (TokPlus p) = p
 pos (TokStar p) = p
@@ -112,6 +128,7 @@ pos (TokLCurl p) = p
 pos (TokRCurl p) = p
 pos (TokAssign p) = p
 pos (TokEq p) = p
+pos (TokNotEq p) = p
 pos (TokComma p) = p
 pos (TokName (p, _)) = p
 pos (TokInt (p,_)) = p
@@ -121,11 +138,15 @@ pos (TokDo p) = p
 pos (TokOd  p) = p
 pos (TokIf  p) = p
 pos (TokFi p) = p
+pos (TokOf p) = p
+pos (TokArray p) = p
 pos (TokArrow p) = p
 pos (TokLSquare p) = p
 pos (TokRSquare p) = p
 pos (TokSquare p) = p
 pos (TokSkip p) = p
+pos (TokSum p) = p
+pos (TokBar p) = p
 pos (TokKeep p) = p
 
 content (p,v) = v
