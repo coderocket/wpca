@@ -1,4 +1,105 @@
 
+- change the names of the tests so that it will be clear what they stand for.
+
+- add support for quantifiers
+
+  - quantifiers can appear only in assertions
+
+  - we must change the substitution algorithm to avoid capturing free variables and to generate unique names that are easy to relate to the original names.
+
+    alternatively we can flag this as an error and ask the progammer to give diffferent names to her local variables.
+
+- add support for relations
+
+- add support for sets
+
+once we support sets we should be able to write and check an abstract version of the quicksort algorithm (where a set is used to hold the parts that we still need to sort).
+
+- add support for procedures
+
+once we support procedures and arrays we should be able to write and check the partition algorithm. 
+
+- add support for arrays
+
+this includes:
+
+1. array declaration:
+
+a : array of n int
+
+<name> : array of <size> <type>
+
+<size> : <name>
+
+- the size variable must refer to an integer variable. 
+- the precondition is expanded to demand that <size> is not negative.
+
+the relational meaning of an array variable is a sequence. for example:
+
+N : int; A : array of N int
+
+generates the following Alloy state signature:
+
+one sig State {
+  N : Int,
+  A : seq Int
+}
+
+fact {
+ all s : State | #s.A.Int = s.N
+}
+
+perhaps it is better to define the type nat to stand for natural numbers
+including 0. then we can write:
+
+N : nat; A : array of N int
+
+and generate the additional fact
+
+all s : State | s.N >= 0
+
+we can then check that the variable that defines the size of the array is
+of type nat.
+
+2. array reference:
+
+- when an array appears in the code it must be inside an array reference.
+- when an array appears in a spec it does not have this limitation.
+- each reference to the array generates a proof obligation to ensure that the reference is within the array's bounds.
+
+for example, the code:
+
+N : int;
+A : array of N int
+; x,y := A[i], A[i+j]
+
+generates two proof obligations:
+
+0 <= i and i < N
+0 <= i+j and i+j < N
+
+- the relational meaning of an array expression is a relational join. we do not have to change the syntax as the meaning of A[i] in Alloy is precisely what we need.
+
+3. array assignment:
+
+- an array variable can appear at most once in an r-value.
+
+for example, assume that A and B are arrays.  this is ok:
+
+A[i],B[j] := e1,e2
+
+this is illegal:
+
+A[i],A[j] := e1,e2
+
+- the relational meaning of an array assignment is an update:
+
+A[i] := e
+
+becomes
+
+A := A ++ i->e
+
 - refactor the code into separate programs and use a shell script to bind them together.
 
   this will greatly simplify the code and the names of each program.
