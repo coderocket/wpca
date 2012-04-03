@@ -13,6 +13,9 @@
  * OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+import java.io.File;
+import java.io.PrintStream;
+import java.io.FileNotFoundException;
 import edu.mit.csail.sdg.alloy4.A4Reporter;
 import edu.mit.csail.sdg.alloy4.Err;
 import edu.mit.csail.sdg.alloy4.ErrorWarning;
@@ -29,16 +32,20 @@ import edu.mit.csail.sdg.alloy4viz.VizGUI;
 public final class AlloyCmdLine {
 
     /*
-     * Execute every command in every file.
-     *
-     * This method parses every file, then execute every command.
+     * Execute all the commands in the first file and place any counterexamples 
+     * into the output file.
      *
      * If there are syntax or type errors, it may throw
      * a ErrorSyntax or ErrorType or ErrorAPI or ErrorFatal exception.
      * You should catch them and display them,
      * and they may contain filename/line/column information.
      */
-    public static void main(String[] args) throws Err {
+    public static void main(String[] args) throws Err, FileNotFoundException {
+
+	if (args.length != 2) {
+		System.out.print("Usage: <alloy file> <output file>\n");
+		System.exit(1);
+	}
 
         // The visualizer (We will initialize it to nonnull when we visualize an Alloy solution)
         VizGUI viz = null;
@@ -53,31 +60,33 @@ public final class AlloyCmdLine {
             }
         };
 
-        for(String filename:args) {
+	String filename = args[0];
+	PrintStream output = new PrintStream(new File(args[1]));
 
-            // Parse+typecheck the model
-            System.out.println("Parsing and Typechecking "+filename+" ...");
-            Module world = CompUtil.parseEverything_fromFile(rep, null, filename);
+        // Parse+typecheck the model
+        System.out.println("Parsing and Typechecking "+filename+" ...");
+        Module world = CompUtil.parseEverything_fromFile(rep, null, filename);
 
-            // Choose some default options for how you want to execute the commands
-            A4Options options = new A4Options();
-            options.solver = A4Options.SatSolver.SAT4J;
+        // Choose some default options for how you want to execute the commands
+        A4Options options = new A4Options();
+        options.solver = A4Options.SatSolver.SAT4J;
 
-            for (Command command: world.getAllCommands()) {
-                // Execute the command
-                System.out.println("... Executing Command "+command+":");
-                A4Solution ans = TranslateAlloyToKodkod.execute_command(rep, world.getAllReachableSigs(), command, options);
-                // Print the outcome
-                System.out.println(ans);
-                // If satisfiable...
-                if (ans.satisfiable()) {
-                    // You can query "ans" to find out the values of each set or type.
-                    // This can be useful for debugging.
-                    //
-                    // You can also write the outcome to an XML file
-                    // ans.writeXML("alloy_example_output.xml");
-                    //
-                    // You can then visualize the XML file by calling this:
+        for (Command command: world.getAllCommands()) {
+            // Execute the command
+            System.out.println("... Executing Command "+command+":");
+            A4Solution ans = TranslateAlloyToKodkod.execute_command(rep, world.getAllReachableSigs(), command, options);
+            // Print the outcome
+            output.println(command+":");
+            output.println(ans);
+            // If satisfiable...
+            if (ans.satisfiable()) {
+                // You can query "ans" to find out the values of each set or type.
+                // This can be useful for debugging.
+                //
+                // You can also write the outcome to an XML file
+                // ans.writeXML("alloy_example_output.xml");
+                //
+                // You can then visualize the XML file by calling this:
 /*
                     if (viz==null) {
                         viz = new VizGUI(false, "alloy_example_output.xml", null);
@@ -85,7 +94,6 @@ public final class AlloyCmdLine {
                         viz.loadXML("alloy_example_output.xml", true);
                     }
 */
-                }
             }
         }
     }

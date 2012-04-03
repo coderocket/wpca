@@ -10,16 +10,18 @@ showCCode env ast =
   do cs <- lookupM "c.sourcefile" env
      hs <- lookupM "c.headerfile" env
      fn <- lookupM "c.function" env
-     putStrLn ("writing c header file to " ++ (head hs))
+     putStrLn ("Writing c header file to " ++ (head hs))
      writeFile (head hs) (showCHeader (head fn) ast)
-     putStrLn ("writing c source file to " ++ (head cs))
+     putStrLn ("Writing c source file to " ++ (head cs))
      writeFile (head cs) (showCSource (head fn) ast)
 
 showCHeader name (Node (_,Spec) (locals:_)) =
-	"void " ++ name ++ "(" ++ (showLocals locals) ++ ");\n"
+	"typedef struct _state {\n" ++ (showLocals locals) ++ "} state;\n" ++
+	"void " ++ name ++ "(state*);\n"
 
 showCSource name (Node (_,Spec) [locals, pre, program, post]) = 
-	"void " ++ name ++ "(" ++ (showLocals locals) ++ ")\n{\n" 
+	"#include \"" ++ name ++ ".h\"\n\n" ++
+	"void " ++ name ++ "(state* s)\n{\n" 
 	++ (showNewLocals locals) ++ "\n"
 	++ (showC env (transform program)) ++ "\n}\n"
   where env = declsToList (subForest locals)
@@ -30,9 +32,12 @@ showC env = foldRose f
   where f (_,Seq) [x, y] = x ++ "\n" ++ y 
         f (_,Skip) [] = ";"
         f (_,Break) [] = "break;"
+        f (_,Type "nat") [] = "unsigned"
         f (_,Type n) [] = n
+        f (_, ArrayType _ t) [] = t ++ "*"
+        f (_, Join) xs = (showJoin xs)
         f (_,String n) [] = case lookup n env of 
-          (Just _) -> "*"++ n
+          (Just _) -> "s->"++ n
           Nothing -> n
         f (_,Int x) [] = (show x)
         f (_,Neg) [x] = "-" ++ x
@@ -43,6 +48,7 @@ showC env = foldRose f
         f (_, Div) [x,y] = x ++ " / " ++ y 
         f (_, Mod) [x,y] = x ++ " % " ++ y
         f (_, Eq) [x,y] = x ++ " == " ++ y
+        f (_, NotEq) [x,y] = x ++ " != " ++ y
         f (_, Greater) [x,y] = x ++ " > " ++ y
         f (_, Less) [x,y] = x ++ " < " ++ y
         f (_, Geq) [x,y] = x ++ " >= " ++ y
@@ -54,20 +60,29 @@ showC env = foldRose f
         f (_, AST.False) [] = "0"
         f (_,Not) [x] = "!(" ++ x ++ ")"
         f (_,Assign) [n,e] = n ++ " = " ++ e ++ ";"
-        f (_,Cond) [g,x,y] = "if (" ++ g ++ ") {\n" ++ x ++ "} else {\n" ++ y ++"}\n"
+        f (_,List) [x] = x 
+        f (_,Cond) [g,x,y] = "if (" ++ g ++ ") {\n" ++ x ++ "\n} else {\n" ++ y ++"}\n"
         f (_,Loop) [gs] = "while(1) {\n" ++ gs ++ "\n}\n"
         f (_,x) xs = show x
 
+
+-- a.b b[a]
+-- a.b.c (b.c)[a] c[b][a]
+-- a b c  => [a] [b] c => c [b] [a] => c[b][a]
+
+showJoin = (foldr (++) "") . reverse . (foldr f [])
+  where f x [] = [x]
+        f x xs = ("[" ++ x ++ "]") :  xs  
+
 showLocals (Node (_,Locals) ds) = foldr f "" (declsToList ds) 
-  where f (n,t) [] = (showC [] t) ++ " *" ++ n
-        f (n,t) ds = (showC [] t) ++ " *" ++ n ++ ", " ++ ds
+  where f (n,t) ds = (showC [] t) ++ " " ++ n ++ ";\n" ++ ds
 
 showNewLocals (Node (_,Locals) ds) = foldr f "" (declsToList ds) 
   where f (n,t) xs = (showC [] t) ++ " " ++ n ++ "_new;" ++ xs
         
 transform :: AST -> AST
 transform = foldRose f
-  where f (_,Assign) [Node (_,List) ns, Node (_,List) es] = transformAssign ns es
+  where f (_,Assign) [Node (_,List) (x:y:ns), Node (_,List) es] = transformAssign (x:y:ns) es
         f (_,Cond) gs = transformCond gs
         f (pos,Loop) [_,(Node (_,List) gs)] = Node (pos, Loop) [transformLoop gs]
         f (pos,kind) xs = Node (pos,kind) xs

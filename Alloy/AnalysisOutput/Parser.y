@@ -11,7 +11,6 @@ import Alloy.AnalysisOutput.Lexer
 %token
   '<:'          { TokRestrict $$ }
   ':'           { TokColon $$ }
-  '.'           { TokDot $$ }
   '->'          { TokArrow $$ }
   '='           { TokEq $$ }
   ','           { TokComma $$ }
@@ -27,7 +26,7 @@ import Alloy.AnalysisOutput.Lexer
 
 %%
 
-Output : word '.' word Checks { $4 }
+Output : Checks { reverse $1 }
 
 Checks : Checks Check { $2:$1 }
   | Check { [$1] }
@@ -52,7 +51,7 @@ Word : word { snd $1 }
 TuplesOrNothing : Tuples { $1 }
   | { [] }
 
-Tuples : Tuples ',' Tuple { $3:$1 }
+Tuples : Tuples ',' Tuple { (reverse $3):$1 }
   | Tuple { [reverse $1] }
 
 Tuple : Tuple '->' Value { $3:$1 }

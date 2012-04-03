@@ -12,11 +12,7 @@ $alpha = [a-zA-Z_]			-- alphabetic characters
 tokens :-
 
   $white+	{ skip }
-  "..."		{ skip }
-  "Parsing and Typechecking"	{ skip }
   "---OUTCOME---"	{ skip }
-  "Executing Command Check"	{ tok $ \p s -> TokCheck p }
-  "."           { tok $ \p s -> TokDot p }
   ":"           { tok $ \p s -> TokColon p }
   "<:"          { tok $ \p s -> TokRestrict p }
   "->"          { tok $ \p s -> TokArrow p }
@@ -25,6 +21,7 @@ tokens :-
   "/"           { tok $ \p s -> TokSlash p }
   "{"           { tok $ \p s -> TokLCurl p }
   "}"           { tok $ \p s -> TokRCurl p }
+  "Check"	{ tok $ \p s -> TokCheck p }
   "this"	{ tok $ \p s -> TokThis p }
   "---INSTANCE---"	{ tok $ \p s -> TokInstance p }
   "Unsatisfiable."	{ tok $ \p s -> TokUnsat p }
@@ -42,7 +39,6 @@ alexEOF = return TokEOF
 
 data Token =
  	TokEOF |
-	TokDot AlexPosn |
 	TokColon AlexPosn |
 	TokRestrict AlexPosn |
 	TokArrow AlexPosn |
@@ -59,7 +55,6 @@ data Token =
 	TokNumber (AlexPosn,Int) 
 	deriving (Eq,Show)
 
-pos (TokDot p) = p
 pos (TokColon p) = p
 pos (TokRestrict p) = p
 pos (TokArrow p) = p

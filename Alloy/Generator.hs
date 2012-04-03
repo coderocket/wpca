@@ -12,15 +12,17 @@ import LookupMonad
 showAlloy :: [(String,[String])] -> AST -> IO ()
 
 showAlloy env (Node (_,Spec) [locals, pre, program, post]) =
-  do [fn] <- lookupM "alloy.analysisfile" env
+  do [afn] <- lookupM "alloy.analysisfile" env
+     [out] <- lookupM "alloy.analysisoutput" env
      ls <- lookupM "alloy.analysislibraries" env
      [cp] <- lookupM "alloy.classpath" env
-     putStrLn ("writing analysis file to " ++ fn)
+     putStrLn ("Writing analysis file to " ++ afn)
      wpEnv <- calcWp program post
-     writeFile fn ((showLibraries ls) ++ (showSpec locals pre wpEnv))
-     report <- runAnalyzer cp fn
+     writeFile afn ((showLibraries ls) ++ (showSpec locals pre wpEnv))
+     report <- runAnalyzer cp afn out
      putStrLn report
-     checks <- parseOutput report
+     output <- readFile out
+     checks <- parseOutput output
      putStrLn (showOutput wpEnv checks)
 
 calcWp program post = 
@@ -38,14 +40,15 @@ showSpec locals pre wpEnv =
         ++ "pred false { some none }\n\n"
 	++ "one sig State {\n " ++ (showA [] locals) ++ "\n}\n" 
 	++ "one sig Const {\n " ++ (showConstDecls cs) ++ "\n}\n"
+        ++ (constraints env) ++ "\n\n"
 	++  (foldr (++) "" (map (showOblig env) wpEnv))
   where ts = declsToList (subForest locals)
         cs = cvars ts pre
         env = ts ++ cs
         showOblig e (nm, (wp, path, goal)) = "\n/*\ngoal: " ++ goal ++ "\npath: " ++ (show path) ++ "\n*/\n" ++ "assert " ++ nm ++ " {\n" ++ (showA e (pre `implies` wp)) ++ "\n}\ncheck " ++ nm ++ "\n\n"
 
-runAnalyzer classpath analysisFile = 
-  do (exitcode, out, err) <- readProcessWithExitCode "java" ["-cp",classpath, "AlloyCmdLine", analysisFile] []
+runAnalyzer classpath analysisFile outputFile = 
+  do (exitcode, out, err) <- readProcessWithExitCode "java" ["-cp",classpath, "AlloyCmdLine", analysisFile, outputFile] []
      case exitcode of 
       ExitSuccess -> return out
       (ExitFailure _) -> fail err 
@@ -108,6 +111,13 @@ showConstDecls [] = ""
 showConstDecls [(s,n)] = s ++ " : " ++ (showA [] n)
 showConstDecls ((s,n):ns) = s ++ " : " ++ (showA [] n) ++ ",\n" ++ (showConstDecls ns)
 
+constraints :: Env -> String
+constraints env = foldr (++) "" (map f env)
+ where 
+ f (n, Node (_, Type "nat") []) = "fact { all s : State | s."++n++".gte[0] }\n"
+ f (n, Node (_, ArrayType k _) []) = "fact { all s : State | #s."++n++"=s."++k++"}\n"
+ f _ = ""
+
 cvars :: Env -> AST -> Env
 
 -- To find the type of a constant (a.k.a model) variable 
@@ -129,7 +139,7 @@ cvars types _ = []
 showOutput :: [(String, Oblig)] -> [ (String, Maybe Instance) ] -> String
 showOutput wpEnv checks = foldr (++) "" (map f checks)
   where f (name, Nothing) = ""
-        f (name, Just (Instance eqns)) = "\nThere is a problem that requires your attention (" ++ name++").\n" ++ "When the program starts with the following initial state:\n\n" ++ (showInst eqns) ++ "\n" ++ (pathOf name wpEnv) 
+        f (name, Just (Instance eqns)) = "\n("++name++") " ++ "When the program starts with:\n\n" ++ (showInst eqns) ++ "\n" ++ (pathOf name wpEnv) 
 
 pathOf :: String -> [(String, Oblig)] -> String
 
