@@ -2,6 +2,7 @@ module Alloy.Generator where
 import List
 import AST
 import Data.Tree
+import Data.Ord
 import Alloy.WPC
 import System.Process
 import System.Exit
@@ -145,6 +146,7 @@ pathOf :: String -> [(String, Oblig)] -> String
 
 pathOf name env = case (lookup name env) of 
   Nothing -> "... Oops, there is no information about this check :("
+  (Just (_,[],goal)) -> "it fails to " ++ goal ++ "\n"
   (Just (_,path,goal)) -> "it fails to " ++ goal ++ "\n"
                           ++ "while following the path that goes through\n" 
                           ++ (showPath path) ++ "\n"
@@ -157,8 +159,45 @@ showInst [] = ""
 showInst ((Set _ _):rest) = showInst rest
 showInst ((Relation kind name tuples):rest) = 
   if kind == "State" 
-  then name ++ "=" ++ (show tuples) ++"\n" ++ (showInst rest)
+  then name ++ "=" ++ (showTuples (map tail tuples)) ++"\n" ++ (showInst rest)
   else showInst rest
 
+{- a hack while we don't have a type environment: if the tuple is unary
+treat it as a basic value, otherwise assume that it is an array.
+-}
 
-        
+showTuples :: [Tuple] -> String
+showTuples [] = "[]"
+showTuples ts = if (length (head ts)) == 1 then (head (head ts)) else ("[" ++ (showArray ts) ++ "]")
+
+{- 
+a tuple that represents an array is a list of the form
+
+[[i1,e1],[i2,e2],...,[in,en]]
+
+where the 'i's and the 'e's are strings. to show it as an array we first
+convert it into a list of pairs:
+
+[ (i1,e1),...,(in,en) ]
+
+where the 'i's are integers, then sort the pairs according to the index,
+remove the index and finally show the (now) ordered list. 
+
+-}
+
+showArray :: [Tuple] -> String
+showArray = printArray . removeIndices . sortPairs . convertIndexToInt 
+
+convertIndexToInt :: [Tuple] -> [(Int, String)]
+convertIndexToInt [] = []
+convertIndexToInt ([key,e]:rest) = (read key,e) : (convertIndexToInt rest)
+
+sortPairs :: [(Int, String)] -> [(Int, String)]
+sortPairs = sortBy (comparing fst)
+
+removeIndices = map snd 
+
+printArray = foldr f "" 
+  where f e [] = e
+        f e xs = e ++ ", " ++ xs
+

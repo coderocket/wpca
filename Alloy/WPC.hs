@@ -23,8 +23,8 @@ wpx (Node (pos,Cond) gs) post = ifdomain : guards
         guards = [ (g `implies` p, (npos s):path, goal) |  (g,s) <- map tidy gs, (p, path, goal) <- wpx s post ]
 
 wpx (Node (pos,Loop) [inv, (Node (_,List) gs)]) post = establishInv : maintainInv ++ achieveGoals
-  where establishInv = (inv, [pos], "establish the loop invariant")
-        maintainInv = [ ((g `conj` inv) `implies` p, (npos g):path, goal) | (g,s) <- map tidy gs, (p,path,goal) <- wpx s [(inv, [pos], "maintain the loop invariant")] ]
+  where establishInv = (inv, [], "establish the loop invariant at " ++ (show pos))
+        maintainInv = [ ((g `conj` inv) `implies` p, (npos g):path, goal) | (g,s) <- map tidy gs, (p,path,goal) <- wpx s [(inv, [], "maintain the loop invariant at " ++ (show pos))] ]
         achieveGoals = [(inv `conj` (foldr conj true [ AST.not g | (g,_) <- map tidy gs ]) `implies` p, pos:path, goal) | (p,path,goal) <- post ]
 
 subst :: [(String,AST)] -> AST -> AST

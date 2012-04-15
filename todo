@@ -46,7 +46,7 @@ one sig State {
 }
 
 fact {
- all s : State | #s.A.Int = s.N
+ all s : State | #s.A = s.N
 }
 
 perhaps it is better to define the type nat to stand for natural numbers
