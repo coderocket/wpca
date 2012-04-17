@@ -44,6 +44,7 @@ import Loc
 	'|'     { TokBar $$ }
 	'and'   { TokAnd $$ }
 	'or'   { TokOr $$ }
+	'=>'   { TokImplies $$ }
 	'do'    { TokDo $$ }
 	'od'    { TokOd $$ }
 	'if'    { TokIf $$ }
@@ -58,9 +59,10 @@ import Loc
 	'no'  	{ TokNo $$ }
 	'keeping'  { TokKeep $$ }
 
+%nonassoc ALL
 %left 'and'
 %left 'or'
-%nonassoc ALL
+%right '=>'
 %nonassoc '=' '>=' '<=' '>' '<' '!='
 %nonassoc '..' SUM
 %left '+' '-' 
@@ -115,6 +117,7 @@ Post : '{' Expr '}' { $2 }
 Expr : '-' Expr { Node ($1, Neg) [$2] }
 	| Expr 'and' Expr { Node ($2,Conj) [$1, $3] }
 	| Expr 'or' Expr { Node ($2,Disj) [$1, $3] }
+	| Expr '=>' Expr { Node ($2,Implies) [$1, $3] }
 	| Expr '>' Expr { Node ($2, Greater) [$1,$3] }
 	| Expr '<' Expr { Node ($2, Less) [$1,$3] }
 	| Expr '>=' Expr { Node ($2, Geq) [$1,$3] }

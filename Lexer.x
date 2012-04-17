@@ -42,6 +42,7 @@ tokens :-
   "nat"                                 { \p s -> TokNatType (loc p) }
   "and"                                 { \p s -> TokAnd (loc p) }
   "or"                                 { \p s -> TokOr (loc p) }
+  "=>"                                 { \p s -> TokImplies (loc p) }
   "div"                                 { \p s -> TokDiv (loc p) }
   "mod"                                 { \p s -> TokMod (loc p) }
   "do"                                  { \p s -> TokDo (loc p) }
@@ -76,6 +77,7 @@ data Token =
 	TokNatType Loc |
 	TokAnd Loc |
 	TokOr Loc |
+	TokImplies Loc |
 	TokPlus Loc |
 	TokStar Loc |
 	TokDash Loc |
@@ -123,6 +125,7 @@ pos (TokIntType p) = p
 pos (TokNatType p) = p
 pos (TokAnd p) = p
 pos (TokOr p) = p
+pos (TokImplies p) = p
 pos (TokPlus p) = p
 pos (TokStar p) = p
 pos (TokDash p) = p
