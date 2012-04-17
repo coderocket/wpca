@@ -43,6 +43,7 @@ import Loc
 	'..'    { TokRange $$ }
 	'|'     { TokBar $$ }
 	'and'   { TokAnd $$ }
+	'or'   { TokOr $$ }
 	'do'    { TokDo $$ }
 	'od'    { TokOd $$ }
 	'if'    { TokIf $$ }
@@ -53,9 +54,13 @@ import Loc
 	'div'	{ TokDiv $$ }
 	'skip'  { TokSkip $$ }
 	'sum'  	{ TokSum $$ }
+	'all'  	{ TokAll $$ }
+	'no'  	{ TokNo $$ }
 	'keeping'  { TokKeep $$ }
 
 %left 'and'
+%left 'or'
+%nonassoc ALL
 %nonassoc '=' '>=' '<=' '>' '<' '!='
 %nonassoc '..' SUM
 %left '+' '-' 
@@ -109,6 +114,7 @@ Post : '{' Expr '}' { $2 }
 
 Expr : '-' Expr { Node ($1, Neg) [$2] }
 	| Expr 'and' Expr { Node ($2,Conj) [$1, $3] }
+	| Expr 'or' Expr { Node ($2,Disj) [$1, $3] }
 	| Expr '>' Expr { Node ($2, Greater) [$1,$3] }
 	| Expr '<' Expr { Node ($2, Less) [$1,$3] }
 	| Expr '>=' Expr { Node ($2, Geq) [$1,$3] }
@@ -126,6 +132,8 @@ Expr : '-' Expr { Node ($1, Neg) [$2] }
 	| Factor { $1 }
 
 Comprehension : 'sum' Locals '|' Expr %prec SUM { Node ($1, Sum) [$2,$4] } 
+	| 'all' Locals '|' Expr %prec ALL { Node ($1, All) [$2,$4] } 
+	| 'no' Locals '|' Expr %prec ALL { Node ($1, No) [$2,$4] } 
 
 Factor: Type { $1 }
 	| int { Node (fst $1, Int (snd $1)) [] }

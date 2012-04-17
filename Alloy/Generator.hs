@@ -87,6 +87,8 @@ showA env = foldRose f
 	f (_, Declaration) [names, typ] = names ++ " : " ++ typ
         f (_, List) names = showNames names
         f (_, Sum) [decls, e] = "(sum " ++ decls ++ " | " ++ e ++ ")"
+        f (_, All) [decls, e] = "(all " ++ decls ++ " | " ++ e ++ ")"
+        f (_, No) [decls, e] = "(no " ++ decls ++ " | " ++ e ++ ")"
         f (_, String n) [] = 
 	   case (lookup n env) of
 		(Just (Node (_,Const) _)) -> "Const." ++ n

@@ -41,6 +41,7 @@ tokens :-
   "int"                                 { \p s -> TokIntType (loc p) }
   "nat"                                 { \p s -> TokNatType (loc p) }
   "and"                                 { \p s -> TokAnd (loc p) }
+  "or"                                 { \p s -> TokOr (loc p) }
   "div"                                 { \p s -> TokDiv (loc p) }
   "mod"                                 { \p s -> TokMod (loc p) }
   "do"                                  { \p s -> TokDo (loc p) }
@@ -49,6 +50,8 @@ tokens :-
   "fi"                                  { \p s -> TokFi (loc p) }
   "skip"                                { \p s -> TokSkip (loc p) }
   "sum"                                 { \p s -> TokSum (loc p) }
+  "all"                                 { \p s -> TokAll (loc p) }
+  "no"                                 { \p s -> TokNo (loc p) }
   "array"                               { \p s -> TokArray (loc p) }
   "of"                                  { \p s -> TokOf (loc p) }
   "keeping"                             { \p s -> TokKeep (loc p) }
@@ -72,6 +75,7 @@ data Token =
 	TokIntType Loc |
 	TokNatType Loc |
 	TokAnd Loc |
+	TokOr Loc |
 	TokPlus Loc |
 	TokStar Loc |
 	TokDash Loc |
@@ -102,6 +106,8 @@ data Token =
 	TokSquare Loc |
 	TokSkip Loc |
 	TokSum Loc |
+	TokAll Loc |
+	TokNo Loc |
 	TokBar Loc |
 	TokKeep Loc
 	deriving (Eq,Show)
@@ -116,6 +122,7 @@ pos (TokLeq p) = p
 pos (TokIntType p) = p
 pos (TokNatType p) = p
 pos (TokAnd p) = p
+pos (TokOr p) = p
 pos (TokPlus p) = p
 pos (TokStar p) = p
 pos (TokDash p) = p
@@ -146,6 +153,8 @@ pos (TokRSquare p) = p
 pos (TokSquare p) = p
 pos (TokSkip p) = p
 pos (TokSum p) = p
+pos (TokAll p) = p
+pos (TokNo p) = p
 pos (TokBar p) = p
 pos (TokKeep p) = p
 
