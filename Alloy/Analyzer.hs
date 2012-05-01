@@ -33,6 +33,10 @@ work cfg code =
 3. calculate the proof obligations 
 4. Retrieve the name of the analysis file from the configuration and
    write the model to the analysis file.
+
+Note that we return the proof obligations because we need them to generate
+the report.
+
 -}
 
 generate :: Config -> AST -> IO ([(String,Oblig)])
