@@ -41,8 +41,11 @@ Value : string { content $1 }
 data Section = Section String [(String,[String])]
 	deriving (Show)
 
-sectionToEnv :: Section -> [(String,[String])]
-sectionToEnv (Section sname ds) = foldr f [] ds 
+type Config = [(String,[String])]
+
+flatten :: Section -> Config
+
+flatten (Section sname ds) = foldr f [] ds 
   where f (s,vs) ds = (sname++"."++s,vs):ds
   
 failWithLoc :: AlexPosn -> String -> Either String a
@@ -68,6 +71,6 @@ scan s = case (alexScanTokens s) of
 
 parseConfig s = case (hParse (scan s)) of
   (Left err) -> fail err
-  (Right sec) -> return (foldr (++) [] (map sectionToEnv sec))
+  (Right sec) -> return (foldr (++) [] (map flatten sec))
 
 }
