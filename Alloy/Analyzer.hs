@@ -21,11 +21,11 @@ report based on the results of the analysis.
 work :: Config -> AST -> IO ()
 
 work cfg code = 
-  do generate cfg code
-     return ()
---  do obligs <- generate cfg code
---     analyse cfg 
---     report cfg obligs
+--  do generate cfg code
+--     return ()
+  do obligs <- generate cfg code
+     analyse cfg 
+     report cfg obligs
 
 {- To generate the model we follow these steps:
 
@@ -64,17 +64,13 @@ augment code@(Node (pos,Spec) [locals, pre, program, post]) = return $ Node (pos
                        (Just t) -> Node (pos, t) []
                        Nothing -> Node (pos, String n) []
            (Just _) -> Node (pos, String n) []
-        f bound env (Node (pos, Sum) [decls, body]) = 
-          augmentQuantifier bound env pos Sum decls body
-        f bound env (Node (pos, All) [decls, body]) = 
-          augmentQuantifier bound env pos All decls body
-        f bound env (Node (pos, No) [decls, body]) = 
-          augmentQuantifier bound env pos No decls body
+        f bound env (Node (pos, Quantifier q) [decls, body]) = 
+          augmentQuantifier bound env pos q decls body
         f bound env (Node datum children) = 
            Node datum (map (f bound env) children)
         initEnv = [ (n, StateVar n) | (n,_) <- (getStateVars code) ] ++ [ (n, ConstVar n) | (n,_) <- getConstants code ]
         augmentQuantifier bound env pos kind decls body =
-          Node (pos, kind) [decls, f ((declNames decls)++bound) env body]
+          Node (pos, Quantifier kind) [decls, f ((declNames decls)++bound) env body]
   
 getStateVars :: AST -> Env
 
@@ -162,9 +158,9 @@ showA = foldRose f
         f (_, Locals) decls = showNames decls
         f (_, Declaration) [names, typ] = names ++ " : " ++ typ
         f (_, List) names = showNames names
-        f (_, Sum) [decls, e] = "(sum " ++ decls ++ " | " ++ e ++ ")"
-        f (_, All) [decls, e] = "(all " ++ decls ++ " | " ++ e ++ ")"
-        f (_, No) [decls, e] = "(no " ++ decls ++ " | " ++ e ++ ")"
+        f (_, Quantifier Sum) [decls, e] = "(sum " ++ decls ++ " | " ++ e ++ ")"
+        f (_, Quantifier All) [decls, e] = "(all " ++ decls ++ " | " ++ e ++ ")"
+        f (_, Quantifier No) [decls, e] = "(no " ++ decls ++ " | " ++ e ++ ")"
         f (_, String n) [] = n
         f (_, StateVar n) [] = "State." ++ n
         f (_, ConstVar n) [] = "Const." ++ n

@@ -52,16 +52,12 @@ subst bound env (Node (p,StateVar n) []) =
                 Nothing -> Node (p, StateVar n) []
     (Just _) -> Node (p, StateVar n) []
 
-subst bound env (Node (p, Sum) [decls, body]) = 
-  substQuantifier p Sum bound env decls body
-subst bound env (Node (p, All) [decls, body]) = 
-  substQuantifier p All bound env decls body
-subst bound env (Node (p, No) [decls, body]) = 
-  substQuantifier p No bound env decls body
+subst bound env (Node (p, Quantifier q) [decls, body]) = 
+  substQuantifier p q bound env decls body
 subst bound env (Node n ns) = Node n (map (subst bound env) ns) 
 
 substQuantifier pos kind bound env decls body =
-  Node (pos, kind) [decls, newBody]
+  Node (pos, Quantifier kind) [decls, newBody]
   where newBody = subst ((declNames decls)++bound) env body
 
 free :: [String] -> AST -> [String]
@@ -69,9 +65,7 @@ free :: [String] -> AST -> [String]
 free bound (Node (_,String n) []) = freeVar bound n
 free bound (Node (_,StateVar n) []) = freeVar bound n
 free bound (Node (_,ConstVar n) []) = freeVar bound n
-free bound (Node (_, Sum) [decls,body]) = freeQuantifier bound decls body
-free bound (Node (_, All) [decls,body]) = freeQuantifier bound decls body
-free bound (Node (_, No) [decls,body]) = freeQuantifier bound decls body
+free bound (Node (_, Quantifier _) [decls,body]) = freeQuantifier bound decls body
 free bound (Node _ ns) = foldr union [] (map (free bound) ns)
 
 freeVar bound n = 
