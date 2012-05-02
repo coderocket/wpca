@@ -1,14 +1,6 @@
 
 - change the names of the tests so that it will be clear what they stand for.
 
-- add support for quantifiers
-
-  - quantifiers can appear only in assertions
-
-  - we must change the substitution algorithm to avoid capturing free variables and to generate unique names that are easy to relate to the original names.
-
-    alternatively we can flag this as an error and ask the progammer to give diffferent names to her local variables.
-
 - add support for relations
 
 - add support for sets
@@ -100,6 +92,25 @@ becomes
 
 A := A ++ i->e
 
+relax this requirement and instead collect all the assignments to 
+the same array in a single update:
+
+A[i],A[j] := e1,e2
+
+becomes
+
+A := A ++ (i->e1 + j->e2)
+
+this makes it possible to swap array elements using the same
+code as to swap variables:
+
+A[i],A[j] := A[j], A[i]
+
+Note that because we require that A is a sequence we automatically
+exclude cases where (i = j and e1 != e2). To detect these errors
+we must add a proof obligation: (i != j or e1 = e2) of course we
+must extend this to the general case.
+
 - refactor the code into separate programs and use a shell script to bind them together.
 
   this will greatly simplify the code and the names of each program.
@@ -134,6 +145,14 @@ we need to display the following information:
 - what are the values that cause the program to follow this path? 
 
 Done
+
+- add support for quantifiers
+
+  - quantifiers can appear only in assertions
+
+  - we must change the substitution algorithm to avoid capturing free variables and to generate unique names that are easy to relate to the original names.
+
+    alternatively we can flag this as an error and ask the progammer to give diffferent names to her local variables.
 
 - change the configuration file syntax to support strings with space 
   this requires start codes but they work only with a monad lexer. 
