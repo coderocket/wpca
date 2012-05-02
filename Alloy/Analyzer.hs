@@ -21,9 +21,11 @@ report based on the results of the analysis.
 work :: Config -> AST -> IO ()
 
 work cfg code = 
-  do obligs <- generate cfg code
-     analyse cfg 
-     report cfg obligs
+  do generate cfg code
+     return ()
+--  do obligs <- generate cfg code
+--     analyse cfg 
+--     report cfg obligs
 
 {- To generate the model we follow these steps:
 
@@ -55,13 +57,25 @@ generate cfg code =
 
 augment :: AST -> IO (AST)
 
-augment code@(Node (pos,Spec) [locals, pre, program, post]) = return $ Node (pos,Spec) [locals, f initialEnv pre, f initialEnv program, f initialEnv post] 
-  where f env (Node (pos, String n) []) = case (lookup n env) of
-                                           (Just t) -> Node (pos, t) []
-                                           Nothing -> Node (pos, String n) []
-        f env (Node datum children) = Node datum (map (f env) children)
-        initialEnv = [ (n, StateVar n) | (n,_) <- (getStateVars code) ] ++ [ (n, ConstVar n) | (n,_) <- getConstants code ]
-
+augment code@(Node (pos,Spec) [locals, pre, program, post]) = return $ Node (pos,Spec) [locals, f [] initEnv pre, f [] initEnv program, f [] initEnv post] 
+  where f bound env (Node (pos, String n) []) = 
+          case (elemIndex n bound) of 
+           Nothing -> case (lookup n env) of
+                       (Just t) -> Node (pos, t) []
+                       Nothing -> Node (pos, String n) []
+           (Just _) -> Node (pos, String n) []
+        f bound env (Node (pos, Sum) [decls, body]) = 
+          augmentQuantifier bound env pos Sum decls body
+        f bound env (Node (pos, All) [decls, body]) = 
+          augmentQuantifier bound env pos All decls body
+        f bound env (Node (pos, No) [decls, body]) = 
+          augmentQuantifier bound env pos No decls body
+        f bound env (Node datum children) = 
+           Node datum (map (f bound env) children)
+        initEnv = [ (n, StateVar n) | (n,_) <- (getStateVars code) ] ++ [ (n, ConstVar n) | (n,_) <- getConstants code ]
+        augmentQuantifier bound env pos kind decls body =
+          Node (pos, kind) [decls, f ((declNames decls)++bound) env body]
+  
 getStateVars :: AST -> Env
 
 getStateVars (Node (_,Spec) [locals, pre, program, post]) = 
