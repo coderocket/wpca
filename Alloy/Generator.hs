@@ -7,7 +7,7 @@ import Alloy.WPC
 import System.Process
 import System.Exit
 import IO
-import Alloy.AnalysisOutput.Parser
+import Alloy.Output.Parser
 import LookupMonad
 
 showAlloy :: [(String,[String])] -> AST -> IO ()

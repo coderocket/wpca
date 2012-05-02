@@ -7,6 +7,7 @@ import Loc
 type Oblig = (AST, [Loc], String)
 
 name (Node (_, String n) []) = n
+name (Node (_, StateVar n) []) = n
 guard (Node (_,List) [g,s]) = g 
 tidy (Node (_,List) [g,s]) = (g,s)
 npos = fst . rootLabel 
@@ -29,10 +30,12 @@ wpx (Node (pos,Loop) [inv, (Node (_,List) gs)]) post = establishInv : maintainIn
 
 subst :: [(String,AST)] -> AST -> AST
 
-subst env (Node (p,String n) []) = 
+{- Substitution can only affect state variables because we can only assign to state variables. -}
+ 
+subst env (Node (p,StateVar n) []) = 
   case (lookup n env) of 
 	(Just e) -> e
-	Nothing -> Node (p, String n) []
+	Nothing -> Node (p, StateVar n) []
 
 subst env (Node n ns) = Node n (map (subst env) ns) 
 

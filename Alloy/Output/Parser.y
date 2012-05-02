@@ -1,7 +1,7 @@
 { 
-module Alloy.AnalysisOutput.Parser where
+module Alloy.Output.Parser where
 import Data.Char
-import Alloy.AnalysisOutput.Lexer
+import Alloy.Output.Lexer
 }
 
 %name hParse

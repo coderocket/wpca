@@ -2,6 +2,9 @@ open util/integer
 
 module misc
 
+pred true { no none }
+pred false { some none }
+
 fun gcd[x,y:Int]:Int {
   max[cd[x,y]]
 }
