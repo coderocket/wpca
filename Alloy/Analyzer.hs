@@ -57,7 +57,8 @@ generate cfg code =
 
 augment :: AST -> IO (AST)
 
-augment code@(Node (pos,Spec) [locals, pre, program, post]) = return $ Node (pos,Spec) [locals, f [] initEnv pre, f [] initEnv program, f [] initEnv post] 
+augment code@(Node (pos,Spec) [locals, pre, program, post]) = 
+  return $ Node (pos,Spec) [locals, f [] initEnv pre, f [] initEnv program, f [] initEnv post] 
   where f bound env (Node (pos, String n) []) = 
           case (elemIndex n bound) of 
            Nothing -> case (lookup n env) of
@@ -164,6 +165,9 @@ showA = foldRose f
         f (_, String n) [] = n
         f (_, StateVar n) [] = "State." ++ n
         f (_, ConstVar n) [] = "Const." ++ n
+        f (_, Pair) [x,y] = "(" ++ x ++ " -> " ++ y  ++ ")"
+        f (_, Union) [x,y] = "(" ++ x ++ " + " ++ y  ++ ")"
+	f other ns = error ("don't know how to show " ++ (show other))
 
 showJoin = foldr f ""
   where f x [] = x

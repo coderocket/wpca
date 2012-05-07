@@ -104,11 +104,14 @@ GuardedCommands : Expr '->' Seq { [Node ($2,List) [$1,$3]] }
 Assign : AssignOk { makeAssign $1 }
     | AssignError { $1 }
 
-AssignOk : name ':=' Expr { ([Node (fst $1, String (snd $1)) []], [$3]) }
-	| name ',' AssignOk ',' Expr { join (Node (fst $1, String (snd $1)) []) $3 $5 }
+AssignOk : LValue ':=' Expr { ([$1], [$3]) }
+	| LValue ',' AssignOk ',' Expr { join $1 $3 $5 }
 
 AssignError : AssignOk ',' {% failWithLoc $2 "assignment has more expressions than variables." }
-    | name ',' AssignOk {% failWithLoc $2 "assignment has more variables than expressions." }
+    | LValue ',' AssignOk {% failWithLoc $2 "assignment has more variables than expressions." }
+
+LValue : name { Node (fst $1, String (snd $1)) [] }
+	| name '[' Expr ']' { Node ($2, Join) [$3, Node (fst $1, String (snd $1)) []] }
 
 Pre : '{' Expr '}' { $2 }
 
