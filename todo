@@ -111,6 +111,12 @@ exclude cases where (i = j and e1 != e2). To detect these errors
 we must add a proof obligation: (i != j or e1 = e2) of course we
 must extend this to the general case.
 
+a more simple solution is to require that the update relation is a function:
+
+(i->e1 + j->e2 + ... + k->en) in Int -> lone Int
+
+for an array of integers.
+
 - refactor the code into separate programs and use a shell script to bind them together.
 
   this will greatly simplify the code and the names of each program.
