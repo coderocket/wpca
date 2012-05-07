@@ -12,9 +12,81 @@ guard (Node (_,List) [g,s]) = g
 tidy (Node (_,List) [g,s]) = (g,s)
 npos = fst . rootLabel 
 
+{- The semantics of simple assignment is simple:
+
+wp (x := e) P = P[x/e]
+
+where P[x/e] is the substitution of every free occurence of x in P by
+the expression e provided that e does not contain free variables that
+are bound in P.
+
+We extend assignment to multiple variables and to array cells. For
+example:
+
+A[i],A[j] := A[j],A[i]
+
+Thus the left hand side of an assignment can now be not only a simple
+variable but in general an L-value. An L-value is either a variable
+or an array expression.
+
+In order to support such assignment statements we convert them into 
+simple assignments according to the following rules:
+
+- We collect all the assignments to the same array into a single
+update operation. For the example above we get:
+
+A := A (+) { i->A[j], j->A[i] }
+
+This is the purpose of the function collect. It takes a list of pairs
+that consist of an L-value and an expression to assign to this L-value
+and returns an equivalent list in which all the assignments to the same
+array has been collected according to the rule above.
+
+Assume that all the pairs in the input have already been collected in
+this manner except the first pair. To complete the collection we face
+the following alternatives:
+
+1. The L-value in the first pair is a simple variable. If there is already
+a pair with this variable in the list we flag an error as it is illegal
+to assign twice into the same simple variable.
+
+
+2. The L-value in the first pair is an array expression and the name
+of the array does not appear in the output list. In this case we simply
+add the pair to the list.
+
+3. The L-value in the fist pair is an array expression and the name
+of the array appears in the output list. In this case we add to the pair
+in the output list the pair that consists of the array index and the
+assigned expression.
+
+-}
+
+collect :: [(AST, AST)] -> Env
+collect = foldr f [] 
+  where f (Node (pos, StateVar n) [], expr) xs = 
+            case (lookup n xs) of
+              Nothing -> (n,expr):xs
+              (Just _) -> error ("Invalid program: " ++ (show pos) ++ ": multiple assignments to the variable " ++ n)
+        f (Node (pos, Join) [index, Node (_, StateVar n) []], expr) xs =
+            case (lookup n xs) of
+              Nothing -> (n, pair index expr):xs
+              (Just ps) -> replace xs n ((pair index expr) `AST.union` ps)
+        f n _ = error ("Invalid L-value: " ++ (show n))
+
+replace :: [(String, a)] -> String -> a -> [(String, a)]
+replace [] _ _ = []
+replace ((n,x):assoc) m y = 
+  if n == m then
+    (n,y):assoc
+  else 
+    (n,x):(replace assoc m y)
+
 wpx :: AST -> [Oblig] -> [Oblig]
 wpx (Node (_,Assign) [Node (_,List) ns, Node (_,List) es]) post = 
-  [ (subst [] (zip (map name ns) es) p, path, goal) | (p,path,goal) <- post ]
+  [ (subst [] (collect (zip ns es)) p, path, goal) | (p,path,goal) <- post ]
+
+--  [ (subst [] (zip (map name ns) es) p, path, goal) | (p,path,goal) <- post ]
 
 wpx (Node (_,Skip) []) post = post
 wpx (Node (_,Seq) [x,y]) post = wpx x ((wpx y) post)
@@ -66,7 +138,7 @@ free bound (Node (_,String n) []) = freeVar bound n
 free bound (Node (_,StateVar n) []) = freeVar bound n
 free bound (Node (_,ConstVar n) []) = freeVar bound n
 free bound (Node (_, Quantifier _) [decls,body]) = freeQuantifier bound decls body
-free bound (Node _ ns) = foldr union [] (map (free bound) ns)
+free bound (Node _ ns) = foldr List.union [] (map (free bound) ns)
 
 freeVar bound n = 
   case (elemIndex n bound) of

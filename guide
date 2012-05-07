@@ -14,7 +14,7 @@ LookupMonad.hs		Error monad to I/O monad adaptor
 Alloy generator and code analyzer
 
 ./Alloy/AlloyCmdLine.java	
-./Alloy/Generator.hs
+./Alloy/Analyzer.hs
 ./Alloy/WPC.hs		Weakest precondition calculator	
 
 ./Alloy/AnalysisOutput/Makefile	
