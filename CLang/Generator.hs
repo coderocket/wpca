@@ -79,7 +79,125 @@ showLocals (Node (_,Locals) ds) = foldr f "" (declsToList ds)
 
 showNewLocals (Node (_,Locals) ds) = foldr f "" (declsToList ds) 
   where f (n,t) xs = (showC [] t) ++ " " ++ n ++ "_new;" ++ xs
-        
+
+{-
+
+The problem: C does not support multiple assignment. Therefore we need
+to transform assignment statements such as
+
+x1,x2,...,xn := e1,e2,...,en
+
+
+where xi is an L-value (a variable or an array cell)
+
+into a sequence of n single assignment statements:
+
+  y1 := e'1
+; y2 := e'2
+...
+; ym := e'm
+
+This sequence of assignment statements must have the same meaning as
+the multiple assignmnet statement.
+
+The unknown is therefore an algorithm that transforms a wpca program
+into an equivalent wpca program that uses only single assignments.
+
+Let us look again at the multiple assignment statement. If the expressions
+do not contain free occurences of the L-values to which we assign, then
+they do not depend on these L-values. This means that we can assign into the
+L-values in any order.
+
+However, if an expression ei has a free occurence of variable xj then
+we must not assign to xj before we have evaluated ei. This approach will
+work as long as there are no circular dependencies between the different
+expressions. But consider the following assignment:
+
+x,y := y,x
+
+We cannot assign into y because it is needed by the first expression and
+we cannot assign into x because it is needed by the second expression.
+
+Alternatively we may keep the value of ei in a new temporary variable
+xj_new and assign the new variable to the L-value only after we have
+evaluated all the expressions. To implement this technique we will
+need to:
+
+1. Create temporary variables for each L-value. This is easier for
+variables than for array expressions.
+
+2. Assign the expressions in the multiple assignment statement to the
+new variables.
+
+4. Assign the new variables to their corresponding L-values
+
+For example:
+
+x,y,A[i+1] := y+x,x,A[j]+x
+
+becomes
+
+  x_1 := y+x
+; y_1 := x
+; array_A_1 := A[j]+x
+; x := x_1
+; y := y_1
+; A[i+1] := array_A_1
+
+or
+
+  tmp_1 := y+x
+; tmp_2 := x
+; tmp_3 := A[j]+x
+; x := tmp_1
+; y := tmp_2
+; A[i+1] := tmp_3
+
+We now discuss how we may implement each of these procedures:
+
+1. Create temporary variables for each L-value. 
+
+There are three problems here:
+
+1.1 How do we know what type to give to the new variable?
+
+The type of the variable is that of the L-value. To find the type of
+the L-value we need a function that calculates the type of an expression
+given the types of its free variables.
+
+1.2 How do we create a name for the variable without colliding with an
+existing variable name?
+
+- If the L-value is a simple variable then we may use the following algorithm:
+
+Add the suffix "_1" to the original variable and check if the new name
+occurs free in the program. Keep incrementing the counter until the name
+does not occur free in the program.
+
+- If the L-value is an array expression of the form a[expr] then:
+
+Create the name array_a_1 and see if the name occurs free in the
+program. Keep incrementing the counter until the name does not occur
+free in the program.
+
+1.3 How do we associate the name of the temporary variable to the L-value?
+
+ - There are many assignment statements in the program.
+ - Because we have arrays there is no longer a simple connection
+between the state variable declarations and the L-values that may appear
+in the assignment statements.
+ - Because we might capture existing variables we cannot use the name
+in the L-value to generate the corresponding temporary variable's name.
+
+We can use a two pass algorithm:
+
+1. Transform the assignments one by one, pulling temporary variable names
+from a stream of names.
+2. Find all the free variables that are L-values in assignments and 
+add declarations for them.
+
+-}
+
 transform :: AST -> AST
 transform = foldRose f
   where f (_,Assign) [Node (_,List) (x:y:ns), Node (_,List) es] = transformAssign (x:y:ns) es
@@ -87,14 +205,16 @@ transform = foldRose f
         f (pos,Loop) [_,(Node (_,List) gs)] = Node (pos, Loop) [transformLoop gs]
         f (pos,kind) xs = Node (pos,kind) xs
 
-transformAssign ns es = (assignNew (zip ns es)) `wseq` (assignVars (map h ns))
-  where h (Node (_,String s) []) = s
-
 transformCond = foldr f skip
   where f (Node (pos,List) [g,s]) gs = Node (pos,Cond) [g,s,gs] 
 
 transformLoop = foldr f AST.break
   where f (Node (pos,List) [g,s]) gs = Node (pos,Cond) [g,s,gs]
+
+newNames = [ "tmp_" ++ (show i) | i <- [0..] ]
+
+transformAssign ns es = (assignNew (zip ns es)) `wseq` (assignVars (map h ns))
+  where h (Node (_,String s) []) = s
 
 assignNew :: [(AST,AST)] -> AST
 assignNew = foldr f skip
