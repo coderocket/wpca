@@ -71,7 +71,8 @@ augment code@(Node (pos,Spec) [locals, pre, program, post]) =
            Node datum (map (f bound env) children)
         initEnv = [ (n, StateVar n) | (n,_) <- (getStateVars code) ] ++ [ (n, ConstVar n) | (n,_) <- getConstants code ]
         augmentQuantifier bound env pos kind decls body =
-          Node (pos, Quantifier kind) [decls, f ((declNames decls)++bound) env body]
+          Node (pos, Quantifier kind) [Node (pos, Locals) (augmentDecls bound env (subForest decls)), f ((declNames decls)++bound) env body]
+        augmentDecls bound env ds = [ Node (pos, Declaration) [ns, f bound env t] | (Node (pos,Declaration) [ns,t]) <- ds ]
   
 getStateVars :: AST -> Env
 
