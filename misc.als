@@ -25,6 +25,11 @@ fun range[b,e:Int] : set Int {
   { z : Int | z.gte[b] and z.lte[e] }
 }
 
+pred permutation[x,y:seq univ] {
+	#x = #y
+	all e : Int.x | #x.e = #y.e
+}
+   
 check { all x : Int | abs[abs[x]] = abs[x] }
 
 check { all x : Int | x >= 0 => abs[x] = x }

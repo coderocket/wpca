@@ -6,7 +6,7 @@ type Env = [(String,AST)]
 
 type AST = Tree (Loc,Kind)
 
-data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | Greater | Less | List | Not | Break | ArrayType String String | Range | Quantifier Quantifier | StateVar String | ConstVar String | Pair | Union
+data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | Greater | Less | List | Not | Break | ArrayType String String | Range | Quantifier Quantifier | StateVar String | ConstVar String | Pair | Union | Update
   deriving (Show)
 
 data Quantifier = Sum | All | No
@@ -23,6 +23,10 @@ declsToList ds = foldr (++) [] (map f ds)
 union :: AST -> AST -> AST
 
 union x y = Node (fst (rootLabel x), Union) [x,y]
+
+update :: AST -> AST -> AST
+
+update x y = Node (fst (rootLabel x), Update) [x,y]
 
 pair :: AST -> AST -> AST
 
@@ -67,4 +71,7 @@ list e = Node (fst (rootLabel e), List) [e]
 
 string :: String -> AST
 string s = Node (startLoc, String s) []
+
+stateVar :: String -> AST
+stateVar s = Node (startLoc, StateVar s) []
 

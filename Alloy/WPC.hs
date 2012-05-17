@@ -30,17 +30,22 @@ variable but in general an L-value. An L-value is either a variable
 or an array expression.
 
 In order to support such assignment statements we convert them into 
-simple assignments according to the following rules:
+simple assignments according to the following rule:
 
 - We collect all the assignments to the same array into a single
 update operation. For the example above we get:
 
-A := A (+) { i->A[j], j->A[i] }
+A := A (++) { i->A[j], j->A[i] }
 
 This is the purpose of the function collect. It takes a list of pairs
 that consist of an L-value and an expression to assign to this L-value
 and returns an equivalent list in which all the assignments to the same
-array has been collected according to the rule above.
+array have been collected according to the rule above.
+
+We implement collect in two steps. First we separate the list of
+multiple assignemnts into two lists: one for simple variables and
+one for assignment to array cells. Then we collect the second list
+according to the rule we have described above.
 
 Assume that all the pairs in the input have already been collected in
 this manner except the first pair. To complete the collection we face
@@ -49,7 +54,6 @@ the following alternatives:
 1. The L-value in the first pair is a simple variable. If there is already
 a pair with this variable in the list we flag an error as it is illegal
 to assign twice into the same simple variable.
-
 
 2. The L-value in the first pair is an array expression and the name
 of the array does not appear in the output list. In this case we simply
@@ -62,17 +66,22 @@ assigned expression.
 
 -}
 
-collect :: [(AST, AST)] -> Env
-collect = foldr f [] 
-  where f (Node (pos, StateVar n) [], expr) xs = 
-            case (lookup n xs) of
-              Nothing -> (n,expr):xs
-              (Just _) -> error ("Invalid program: " ++ (show pos) ++ ": multiple assignments to the variable " ++ n)
-        f (Node (pos, Join) [index, Node (_, StateVar n) []], expr) xs =
-            case (lookup n xs) of
-              Nothing -> (n, pair index expr):xs
-              (Just ps) -> replace xs n ((pair index expr) `AST.union` ps)
+collect :: [(AST,AST)] -> Env
+collect bs = simple ++ [ (n, (stateVar n) `update` expr) | (n,expr) <- reduce arrays ]
+  where (simple,arrays) = separate bs
+
+separate :: [(AST,AST)] -> (Env, Env)
+separate = foldr f ([],[])
+  where f (Node (pos, StateVar n) [], expr) (simple,arrays) = ((n,expr):simple,arrays)
+        f (Node (pos, Join) [index, Node (_, StateVar n) []], expr) (simple,arrays) = (simple, (n, pair index expr):arrays)
         f n _ = error ("Invalid L-value: " ++ (show n))
+
+reduce :: Env -> Env
+reduce = foldr f []
+  where f (n, expr) xs = 
+         case (lookup n xs) of 
+          Nothing -> (n, expr):xs
+          (Just pairs) -> replace xs n (expr `AST.union` pairs) 
 
 replace :: [(String, a)] -> String -> a -> [(String, a)]
 replace [] _ _ = []
@@ -84,7 +93,7 @@ replace ((n,x):assoc) m y =
 
 wpx :: AST -> [Oblig] -> [Oblig]
 wpx (Node (_,Assign) [Node (_,List) ns, Node (_,List) es]) post = 
-  [ (subst [] (collect (zip ns es)) p, path, goal) | (p,path,goal) <- post ]
+  [ (subst [] (collect (zip ns es)) expr, path, goal) | (expr,path,goal) <- post ]
 
 --  [ (subst [] (zip (map name ns) es) p, path, goal) | (p,path,goal) <- post ]
 
@@ -129,8 +138,9 @@ subst bound env (Node (p, Quantifier q) [decls, body]) =
 subst bound env (Node n ns) = Node n (map (subst bound env) ns) 
 
 substQuantifier pos kind bound env decls body =
-  Node (pos, Quantifier kind) [decls, newBody]
+  Node (pos, Quantifier kind) [newDecls, newBody]
   where newBody = subst ((declNames decls)++bound) env body
+        newDecls = Node (pos, Locals) [ Node (p, Declaration) [ns, subst bound env t] | (Node (p, Declaration) [ns, t]) <- (subForest decls) ]
 
 free :: [String] -> AST -> [String]
 
