@@ -26,6 +26,7 @@ import edu.mit.csail.sdg.alloy4compiler.translator.A4Options;
 import edu.mit.csail.sdg.alloy4compiler.translator.A4Solution;
 import edu.mit.csail.sdg.alloy4compiler.translator.TranslateAlloyToKodkod;
 import edu.mit.csail.sdg.alloy4viz.VizGUI;
+import edu.mit.csail.sdg.alloy4.Version;
 
 /** This class demonstrates how to access Alloy4 via the compiler methods. */
 
@@ -63,6 +64,8 @@ public final class AlloyCmdLine {
 	String filename = args[0];
 	PrintStream output = new PrintStream(new File(args[1]));
 
+	// Identify yourself
+	System.out.println("Alloy Analyzer " + Version.version() + " (build: " + Version.buildNumber() +" date: " + Version.buildDate() +")");
         // Parse+typecheck the model
         System.out.println("Parsing and Typechecking "+filename+" ...");
         Module world = CompUtil.parseEverything_fromFile(rep, null, filename);
@@ -70,16 +73,17 @@ public final class AlloyCmdLine {
         // Choose some default options for how you want to execute the commands
         A4Options options = new A4Options();
         options.solver = A4Options.SatSolver.SAT4J;
-
+	boolean foundCounterExamples = false;
         for (Command command: world.getAllCommands()) {
             // Execute the command
-            System.out.println("... Executing Command "+command+":");
+            System.out.println("... Executing command "+command+":");
             A4Solution ans = TranslateAlloyToKodkod.execute_command(rep, world.getAllReachableSigs(), command, options);
             // Print the outcome
             output.println(command+":");
             output.println(ans);
             // If satisfiable...
             if (ans.satisfiable()) {
+		foundCounterExamples = true;
                 // You can query "ans" to find out the values of each set or type.
                 // This can be useful for debugging.
                 //
@@ -96,5 +100,7 @@ public final class AlloyCmdLine {
 */
             }
         }
+	if (!foundCounterExamples)
+		System.out.println("Found no counterexamples, program may be correct.");
     }
 }

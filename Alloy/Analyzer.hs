@@ -168,7 +168,8 @@ showA = foldRose f
         f (_, ConstVar n) [] = "Const." ++ n
         f (_, Pair) [x,y] = "(" ++ x ++ " -> " ++ y  ++ ")"
         f (_, Union) [x,y] = "(" ++ x ++ " + " ++ y  ++ ")"
-	f other ns = error ("don't know how to show " ++ (show other))
+        f (_, Update) [x,y] = "(" ++ x ++ " ++ " ++ y  ++ ")"
+	f other ns = error ("Internal error: Don't know how to show " ++ (show other))
 
 showJoin = foldr f ""
   where f x [] = x

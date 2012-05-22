@@ -155,6 +155,46 @@ exclude cases where (i = j and e1 != e2). To detect these errors
 we must add a proof obligation: (i != j or e1 = e2) of course we
 must extend this to the general case.
 
+a more simple solution is to require that the update relation is a function:
+
+(i->e1 + j->e2 + ... + k->en) in Int -> lone Int
+
+for an array of integers.
+
+- refactor the code into separate programs and use a shell script to bind them together.
+
+  this will greatly simplify the code and the names of each program.
+
+- refactor the code to reflect the architecture
+
+- improve the structure of the alloy module. 
+currently we identify the different kinds of variables in an ad-hoc manner.
+
+- find or write a template mechanism for the part that generates the alloy code
+
+- is it beneficial to use cabal instead of make?
+
+- how do we integrate typechecking? as a separate tool? using an attribute grammar?
+
+- create a java module 
+
+- we need to deal with counterexamples that occur because of overflows. when alloy's latest version comes out we can use the 'no overflow' feature. should we do something else in the meantime?
+- should we check for a particular alloy version?
+- how can we translate alloy's solution to a test case? 
+this of course depends on the platform. 
+
+- display the result of analysis in a way that is meaningful to the author of the program.
+
+this problem requires a deeper analysis than I have previously thought. 
+
+we need to display the following information:
+
+- which property was violated (include its location and name: is it a loop invariant or a postcondition?)
+- which line of code caused the violation (include its location)
+- what is the path that the program follows to get to the offending line of code?
+- what are the values that cause the program to follow this path? 
+
+Done
 
 - add support for quantifiers
 
