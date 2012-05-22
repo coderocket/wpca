@@ -1,3 +1,8 @@
+- change the names of the top level variable declaration to indicate that
+these are the state variables.
+
+- simplify the declaration section to be a list of pairs where each pair
+associates a name to its type (or set expression).
 
 - the transformers that convert a wpca program into a simple form should
 be refactored into a separate module because they will be reused by many
@@ -14,6 +19,7 @@ once we support sets we should be able to write and check an abstract version of
 - add support for procedures
 
 once we support procedures and arrays we should be able to write and check the partition algorithm. 
+
 - refactor the code into separate programs and use a shell script to bind them together.
 
   this will greatly simplify the code and the names of each program.
