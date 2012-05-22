@@ -35,7 +35,7 @@ simple assignments according to the following rules:
 - We collect all the assignments to the same array into a single
 update operation. For the example above we get:
 
-A := A (+) { i->A[j], j->A[i] }
+A := A (++) { i->A[j], j->A[i] }
 
 This is the purpose of the function collect. It takes a list of pairs
 that consist of an L-value and an expression to assign to this L-value
@@ -63,7 +63,7 @@ assigned expression.
 -}
 
 collect :: [(AST, AST)] -> Env
-collect = foldr f [] 
+collect = foldr f []
   where f (Node (pos, StateVar n) [], expr) xs = 
             case (lookup n xs) of
               Nothing -> (n,expr):xs
@@ -125,7 +125,7 @@ subst bound env (Node (p,StateVar n) []) =
     (Just _) -> Node (p, StateVar n) []
 
 subst bound env (Node (p, Quantifier q) [decls, body]) = 
-  substQuantifier p q bound env decls body
+  substQuantifier p q bound env (subst bound env decls) body
 subst bound env (Node n ns) = Node n (map (subst bound env) ns) 
 
 substQuantifier pos kind bound env decls body =
