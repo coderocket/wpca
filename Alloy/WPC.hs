@@ -102,10 +102,76 @@ wpx (Node (pos,Cond) gs) post = ifdomain : guards
   where ifdomain = (foldr disj false (map guard gs), [pos], "satisfy any of the guards")
         guards = [ (g `implies` p, (npos s):path, goal) |  (g,s) <- map tidy gs, (p, path, goal) <- wpx s post ]
 
+{- 
+
+The predicates in maintainInv are not a part of the precondition but
+independent goals that should be checked on their own. To illustrate
+this problem consider the following code:
+
+; n := 10
+  { true }
+keeping 
+  n >= 0
+do n > 0 -> n := n - 1 od
+  { n = 0 }
+
+In this example we must ensure that the assignment n := 10 establishes
+the invariant n >= 0 but then we have to separately check
+
+{ n >= 0 and n > 0 }
+n := n - 1
+{ n >= 0 }
+
+That is, that
+
+n >= 0 and n > 0 => wp(n := n-1, n>=0)
+
+But currently we have a major flaw because instead we check that
+
+  wp (n := 10, (n >= 0 and n > 0) => wp(n := n-1, n>=0))
+
+One approach:
+
+wpx should return two lists: one is a list of preconditions and the
+other is a list of top-level obligations.  The top-level obligations
+are just collected in a list. Only the preconditions are used in the
+wp calculations.
+
+Another approach:
+
+It is as if the loop construct is a separate command that has the
+following contract
+
+precondition : loop invariant and invariant maintenance assertions
+body 
+postcondition : loop invariant and negation of all guards 
+
+Therefore we can use the general form of the wp of a specification
+statement:
+
+wp (pre,post) p = pre and (all v:state | post => p)
+
+The quantifier protects from substituting in post. However this form
+requires that post will contain all the state variables that do not
+change.  We can add them by examining the loop and extracting all the
+state variables that are assigned to in the loop. Then we can use the
+wp for a specification statement with a frame: 
+
+wp (pre,frame,post) p = pre and (all v:frame | post => p)
+
+Actually we cannot quantify over the state variables because Alloy can
+quantify only over atoms and this rules out quantifying over array state
+variables. Instead we can quantify over the state itself. This is very
+easy to achieve because it means that to universally quantify over the
+state variables of a predicate we simply prevent substitution on that
+predicate using a special 'closure' node.
+
+-}
+
 wpx (Node (pos,Loop) [inv, (Node (_,List) gs)]) post = establishInv : maintainInv ++ achieveGoals
   where establishInv = (inv, [], "establish the loop invariant at " ++ (show pos))
-        maintainInv = [ ((g `conj` inv) `implies` p, (npos g):path, goal) | (g,s) <- map tidy gs, (p,path,goal) <- wpx s [(inv, [], "maintain the loop invariant at " ++ (show pos))] ]
-        achieveGoals = [(inv `conj` (foldr conj true [ AST.not g | (g,_) <- map tidy gs ]) `implies` p, pos:path, goal) | (p,path,goal) <- post ]
+        maintainInv = [ (close ((g `conj` inv) `implies` p), (npos g):path, goal) | (g,s) <- map tidy gs, (p,path,goal) <- wpx s [(inv, [], "maintain the loop invariant at " ++ (show pos))] ]
+        achieveGoals = [(close (inv `conj` (foldr conj true [ AST.not g | (g,_) <- map tidy gs ]) `implies` p), pos:path, goal) | (p,path,goal) <- post ]
 
 {- The call
 
@@ -132,7 +198,8 @@ subst bound env (Node (p,StateVar n) []) =
     (Just _) -> Node (p, StateVar n) []
 
 subst bound env (Node (p, Quantifier q) [decls, body]) = 
-  substQuantifier p q bound env (subst bound env decls) body
+  substQuantifier p q bound env decls body
+subst bound env (Node (_, Closure) [n]) = n
 subst bound env (Node n ns) = Node n (map (subst bound env) ns) 
 
 substQuantifier pos kind bound env decls body =

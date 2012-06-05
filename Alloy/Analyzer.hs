@@ -169,6 +169,7 @@ showA = foldRose f
         f (_, Pair) [x,y] = "(" ++ x ++ " -> " ++ y  ++ ")"
         f (_, Union) [x,y] = "(" ++ x ++ " + " ++ y  ++ ")"
         f (_, Update) [x,y] = "(" ++ x ++ " ++ " ++ y  ++ ")"
+	f (_, Closure) [x] = x
 	f other ns = error ("Internal error: Don't know how to show " ++ (show other))
 
 showJoin = foldr f ""
