@@ -52,6 +52,7 @@ tokens :-
   "skip"                                { \p s -> TokSkip (loc p) }
   "sum"                                 { \p s -> TokSum (loc p) }
   "all"                                 { \p s -> TokAll (loc p) }
+  "some"                                 { \p s -> TokSome (loc p) }
   "no"                                 { \p s -> TokNo (loc p) }
   "array"                               { \p s -> TokArray (loc p) }
   "of"                                  { \p s -> TokOf (loc p) }
@@ -109,6 +110,7 @@ data Token =
 	TokSkip Loc |
 	TokSum Loc |
 	TokAll Loc |
+	TokSome Loc |
 	TokNo Loc |
 	TokBar Loc |
 	TokKeep Loc
@@ -157,6 +159,7 @@ pos (TokSquare p) = p
 pos (TokSkip p) = p
 pos (TokSum p) = p
 pos (TokAll p) = p
+pos (TokSome p) = p
 pos (TokNo p) = p
 pos (TokBar p) = p
 pos (TokKeep p) = p

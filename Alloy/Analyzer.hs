@@ -163,6 +163,7 @@ showA = foldRose f
         f (_, Quantifier Sum) [decls, e] = "(sum " ++ decls ++ " | " ++ e ++ ")"
         f (_, Quantifier All) [decls, e] = "(all " ++ decls ++ " | " ++ e ++ ")"
         f (_, Quantifier No) [decls, e] = "(no " ++ decls ++ " | " ++ e ++ ")"
+        f (_, Quantifier Some) [decls, e] = "(some " ++ decls ++ " | " ++ e ++ ")"
         f (_, String n) [] = n
         f (_, StateVar n) [] = "State." ++ n
         f (_, ConstVar n) [] = "Const." ++ n

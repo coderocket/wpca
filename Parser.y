@@ -56,6 +56,7 @@ import Loc
 	'skip'  { TokSkip $$ }
 	'sum'  	{ TokSum $$ }
 	'all'  	{ TokAll $$ }
+	'some' 	{ TokSome $$ }
 	'no'  	{ TokNo $$ }
 	'keeping'  { TokKeep $$ }
 
@@ -140,6 +141,7 @@ Expr : '-' Expr { Node ($1, Neg) [$2] }
 Comprehension : 'sum' Locals '|' Expr %prec SUM { Node ($1, Quantifier Sum) [$2,$4] } 
 	| 'all' Locals '|' Expr %prec ALL { Node ($1, Quantifier All) [$2,$4] } 
 	| 'no' Locals '|' Expr %prec ALL { Node ($1, Quantifier No) [$2,$4] } 
+	| 'some' Locals '|' Expr %prec ALL { Node ($1, Quantifier Some) [$2,$4] } 
 
 Factor: Type { $1 }
 	| int { Node (fst $1, Int (snd $1)) [] }
