@@ -87,11 +87,14 @@ Seq : Stmt { $1 }
 
 Stmt : If { $1 }
     | Assign { $1 }
+    | Assert { $1 }
     | Do { $1 }
     | 'skip' { Node ($1,Skip) [] }
 
 Do : DoOk { $1 }
 	| DoError { $1 }
+
+Assert : '{' Expr '}' { Node ($1, Assert) [$2] }
 
 DoOk : 'keeping' Expr 'do' GuardedCommands 'od' { Node ($1,Loop) [$2, Node ($3, List) (reverse $4)] }
 

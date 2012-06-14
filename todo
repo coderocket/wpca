@@ -1,3 +1,30 @@
+- extend the wpca language to have a section of alloy definitions
+this has several benefits:
+
+1. When the Alloy definitions in the code are separate from the
+code there is a danger of losing them, thus losing the meaning of
+the model. When everything is in the same file this danger is
+eliminated.
+
+2. It is easier to understand the code when all the definitions are
+visible at once.
+
+3. There is no need to affect a global resource (such as a global
+definition include file). This improves modularity.
+
+We may implement this extension as follows:
+
+<wpca code>
+
+'where'
+
+<alloy code>
+
+Open issues: should the alloy code be passed 'as is' to alloy? 
+
+One problem is that in wpca the name of the set of integers is 'int'
+but in Alloy it is 'Int'.
+
 - change the names of the top level variable declaration to indicate
 that these are the state variables.
 
@@ -15,6 +42,9 @@ stand for.
 
 - add support for sets
 
+requires a data structure C library that supports sets. We may use
+gnulib which contains implementations of a set ADT.
+
 once we support sets we should be able to write and check an abstract
 version of the quicksort algorithm (where a set is used to hold the
 parts that we still need to sort).
@@ -23,6 +53,14 @@ parts that we still need to sort).
 
 once we support procedures and arrays we should be able to write and
 check the partition algorithm.
+
+to support procedures we need to:
+
+1. decide on a syntax of a procedure in particular how we specify
+input and output variables.
+
+2. define the wp semantics of a procedure. 
+
 
 - refactor the code into separate programs and use a shell script to
 bind them together.

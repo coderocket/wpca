@@ -96,6 +96,8 @@ wpx (Node (_,Assign) [Node (_,List) ns, Node (_,List) es]) post =
   [ (subst [] (collect (zip ns es)) expr, path, goal) | (expr,path,goal) <- post ]
 
 wpx (Node (_,Skip) []) post = post
+wpx (Node (pos,Assert) [p]) post = (p,[pos],"satisfy the assertion"):post
+
 wpx (Node (_,Seq) [x,y]) post = wpx x ((wpx y) post)
 
 wpx (Node (pos,Cond) gs) post = ifdomain : guards 

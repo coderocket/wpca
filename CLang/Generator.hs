@@ -63,6 +63,7 @@ showC env = foldRose f
         f (_,AST.False) [] = "0"
         f (_,Not) [x] = "!(" ++ x ++ ")"
         f (_,Assign) [n,e] = n ++ " = " ++ e ++ ";"
+        f (_,Assert) [_] = ";"
         f (_,List) [x] = x 
         f (_,Cond) [g,x,y] = "if (" ++ g ++ ") {\n" ++ x ++ "\n} else {\n" ++ y ++"}\n"
         f (_,Loop) [gs] = "while(1) {\n" ++ gs ++ "\n}\n"
