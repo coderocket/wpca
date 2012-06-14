@@ -7,7 +7,7 @@ module Alloy.Output.Lexer where
 $digit = [0-9]
 $alpha = [a-zA-Z_]			-- alphabetic characters
 @num = \-? $digit +
-@word = $alpha ($alpha | $digit)* ("$" @num)?
+@word = ($alpha | "$") ($alpha | "$" | $digit)* 
 
 tokens :-
 
@@ -23,6 +23,7 @@ tokens :-
   "}"           { tok $ \p s -> TokRCurl p }
   "Check"	{ tok $ \p s -> TokCheck p }
   "this"	{ tok $ \p s -> TokThis p }
+  "skolem"	{ tok $ \p s -> TokSkolem p }
   "---INSTANCE---"	{ tok $ \p s -> TokInstance p }
   "Unsatisfiable."	{ tok $ \p s -> TokUnsat p }
   @word		{ tok $ \p s -> TokWord (p,s) }
@@ -48,6 +49,7 @@ data Token =
 	TokLCurl AlexPosn |
 	TokRCurl AlexPosn |
 	TokThis AlexPosn |
+	TokSkolem AlexPosn |
 	TokInstance AlexPosn |
 	TokCheck AlexPosn |
 	TokUnsat AlexPosn |
@@ -66,6 +68,7 @@ pos (TokSlash p) = p
 pos (TokLCurl p) = p
 pos (TokRCurl p) = p
 pos (TokThis p) = p
+pos (TokSkolem p) = p
 pos (TokWord (p, _)) = p
 pos (TokNumber (p, _)) = p
 

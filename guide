@@ -17,9 +17,9 @@ Alloy generator and code analyzer
 ./Alloy/Analyzer.hs
 ./Alloy/WPC.hs		Weakest precondition calculator	
 
-./Alloy/AnalysisOutput/Makefile	
-./Alloy/AnalysisOutput/Parser.y 	
-./Alloy/AnalysisOutput/Lexer.x	
+./Alloy/Output/Makefile	
+./Alloy/Output/Parser.y 	
+./Alloy/Output/Lexer.x	
 
 C code generator
 

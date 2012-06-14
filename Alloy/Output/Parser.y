@@ -18,6 +18,7 @@ import Alloy.Output.Lexer
   '{'           { TokLCurl $$ }
   '}'           { TokRCurl $$ }
   'this'	{ TokThis $$ }
+  'skolem'	{ TokSkolem $$ }
   'instance'	{ TokInstance $$ }
   'unsat'	{ TokUnsat $$ }
   'check' 	{ TokCheck $$ } 
@@ -45,6 +46,7 @@ Equation : Word '=' '{' TuplesOrNothing '}' { Set $1 $4 }
   | Word '/' Word '=' '{' TuplesOrNothing '}' { Set ($1 ++ $3) $6 }
   | 'this' '/' Word '=' '{' TuplesOrNothing '}' { Set $3 $6 }
   | 'this' '/' Word '<:' Word '=' '{' TuplesOrNothing '}' { Relation $3 $5 $8 }
+  | 'skolem' Word '=' '{' TuplesOrNothing '}' { Relation "Local" $2 $5 }
 
 Word : word { snd $1 }
 

@@ -199,13 +199,14 @@ report :: Config -> [(String,Oblig)] -> IO ()
 report cfg obligs = 
   do [outputFile] <- lookupM "alloy.analysisoutput" cfg
      output <- readFile outputFile
+     putStrLn ("... Parsing output file: " ++ outputFile)
      checks <- parseOutput output
      putStrLn (showOutput obligs checks)
 
 showOutput :: [(String, Oblig)] -> [ (String, Maybe Instance) ] -> String
 showOutput wpEnv checks = foldr (++) "" (map f checks)
   where f (name, Nothing) = ""
-        f (name, Just (Instance eqns)) = "\n("++name++") " ++ "When the program starts with:\n\n" ++ (showInst eqns) ++ "\n" ++ (pathOf name wpEnv)
+        f (name, Just (Instance eqns)) = "\n("++name++") " ++ "When the program starts with:\n\n" ++ (showInst eqns) ++ "\n" ++ (pathOf name wpEnv) ++ (skolemVars eqns)
 
 pathOf :: String -> [(String, Oblig)] -> String
 
@@ -215,7 +216,6 @@ pathOf name env = case (lookup name env) of
   (Just (_,path,goal)) -> "it fails to " ++ goal ++ "\n"
                           ++ "while following the path that goes through\n"
                           ++ (showPath path) ++ "\n"
-
 showPath [] = ""
 showPath [(line,col)] = "Line " ++ (show line) ++ " column " ++ (show col)
 showPath ((line,col):(r:rest)) = "Line " ++ (show line) ++ " column " ++ (show col) ++ " then\n" ++ (showPath (r:rest))
@@ -226,6 +226,20 @@ showInst ((Relation kind name tuples):rest) =
   if kind == "State"
   then name ++ "=" ++ (showTuples (map tail tuples)) ++"\n" ++ (showInst rest)
   else showInst rest
+
+skolemVars :: [ Equation ] -> String
+
+skolemVars eqs = 
+  if skolems == "" 
+  then ""
+  else "in particular for " ++ skolems
+  where skolems = showSkolem eqs
+
+showSkolem :: [ Equation ] -> String
+showSkolem = foldr f "" 
+  where f (Relation "Local" name tuples) rest =
+                name ++ "=" ++ (showTuples tuples) ++"\n" ++ rest
+        f _ rest = rest 
 
 {- a hack while we don't have a type environment: if the tuple is unary
 treat it as a basic value, otherwise assume that it is an array.
