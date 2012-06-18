@@ -1,3 +1,29 @@
+- support ternary relational expressions.
+
+instead of writing
+
+0 < i and i < N
+
+write
+
+0 < i < N
+
+how to support a ternary operator like this one?
+
+expr : term '<' term | term '<' term '<' term | term
+
+term : term '+' term | term '-' term | integer
+
+- support concurrency based on the Gries/Owiki theory
+
+- change the report to reflect the true meaning of the counter-example.
+
+The counter-example represents a state of the program that satisfies
+all the guards along a particular path to a goal but does not satisfy
+the goal.
+
+- compare wpca to: B-Toolkit, Forge, DynAlloy, Spark
+
 - extend the wpca language to have a section of alloy definitions
 this has several benefits:
 

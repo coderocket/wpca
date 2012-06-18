@@ -64,7 +64,7 @@ import Loc
 %left 'and'
 %left 'or'
 %right '=>'
-%nonassoc '=' '>=' '<=' '>' '<' '!='
+%nonassoc '=' '!=' '>=' '<=' '>' '<' 
 %nonassoc '..' SUM
 %left '+' '-' 
 %left '*' '/' 'mod' 'div'
@@ -121,24 +121,32 @@ Pre : '{' Expr '}' { $2 }
 
 Post : '{' Expr '}' { $2 }
 
-Expr : '-' Expr { Node ($1, Neg) [$2] }
-	| Expr 'and' Expr { Node ($2,Conj) [$1, $3] }
+Expr : Expr 'and' Expr { Node ($2,Conj) [$1, $3] }
 	| Expr 'or' Expr { Node ($2,Disj) [$1, $3] }
 	| Expr '=>' Expr { Node ($2,Implies) [$1, $3] }
-	| Expr '>' Expr { Node ($2, Greater) [$1,$3] }
-	| Expr '<' Expr { Node ($2, Less) [$1,$3] }
-	| Expr '>=' Expr { Node ($2, Geq) [$1,$3] }
-	| Expr '<=' Expr { Node ($2, Leq) [$1,$3] }
-	| Expr '=' Expr { Node ($2, Eq) [$1,$3] }
-	| Expr '!=' Expr { Node ($2, NotEq) [$1,$3] }
-	| Expr '+' Expr { Node ($2, Plus) [$1,$3] }
-	| Expr '-' Expr { Node ($2, Minus) [$1,$3] }
-	| Expr '*' Expr { Node ($2, Times) [$1,$3] }
-	| Expr '/' Expr { Node ($2, Quotient) [$1,$3] }
-	| Expr 'mod' Expr { Node ($2, Mod) [$1,$3] }
-	| Expr 'div' Expr { Node ($2, Div) [$1,$3] }
-	| Expr '..' Expr { Node ($2, Range) [$1,$3] }
 	| Comprehension { $1 }
+	| Relat { $1 }
+
+Relat :  Term '>' Term { Node ($2, Greater) [$1,$3] }
+	| Term '<' Term { Node ($2, Less) [$1,$3] }
+	| Term '>=' Term { Node ($2, Geq) [$1,$3] }
+	| Term '<=' Term { Node ($2, Leq) [$1,$3] }
+	| Term '=' Term { Node ($2, Eq) [$1,$3] }
+	| Term '!=' Term { Node ($2, NotEq) [$1,$3] }
+	| Term '<' Term '<' Term { (Node ($2, Less) [$1,$3]) `conj` (Node ($4, Less) [$3,$5]) }
+	| Term '<=' Term '<' Term { (Node ($2, Leq) [$1,$3]) `conj` (Node ($4, Less) [$3,$5]) }
+	| Term '<' Term '<=' Term { (Node ($2, Less) [$1,$3]) `conj` (Node ($4, Leq) [$3,$5]) }
+	| Term '<=' Term '<=' Term { (Node ($2, Leq) [$1,$3]) `conj` (Node ($4, Leq) [$3,$5]) }
+	| Term { $1 }
+
+Term: '-' Term { Node ($1, Neg) [$2] }
+	| Term '+' Term { Node ($2, Plus) [$1,$3] }
+	| Term '-' Term { Node ($2, Minus) [$1,$3] }
+	| Term '*' Term { Node ($2, Times) [$1,$3] }
+	| Term '/' Term { Node ($2, Quotient) [$1,$3] }
+	| Term 'mod' Term { Node ($2, Mod) [$1,$3] }
+	| Term 'div' Term { Node ($2, Div) [$1,$3] }
+	| Term '..' Term { Node ($2, Range) [$1,$3] }
 	| Factor { $1 }
 
 Comprehension : 'sum' Locals '|' Expr %prec SUM { Node ($1, Quantifier Sum) [$2,$4] } 
