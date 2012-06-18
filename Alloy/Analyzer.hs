@@ -6,6 +6,8 @@ import LookupMonad
 import Alloy.WPC
 import System.Process
 import System.Exit
+import System.IO
+import System.IO.Error
 import Alloy.Output.Parser
 import Data.Ord
 import List
@@ -51,7 +53,7 @@ generate cfg code =
      obligs <- calcObligs acode
      [analysisFile] <- lookupM "alloy.analysisfile" cfg
      libraries <- lookupM "alloy.analysislibraries" cfg
-     putStrLn (" ...Writing analysis file to " ++ analysisFile)
+     putStrLn ("... There are " ++ (show (length obligs)) ++ " proof obligations. Writing analysis file to " ++ analysisFile)
      writeFile analysisFile (showModel libraries stateVars constants obligs)
      return obligs
 
@@ -188,11 +190,28 @@ analyse cfg =
   do [analysisFile] <- lookupM "alloy.analysisfile" cfg
      [outputFile] <- lookupM "alloy.analysisoutput" cfg
      [classpath] <- lookupM "alloy.classpath" cfg
-     (exitcode, out, err) <- readProcessWithExitCode "java" ["-cp",classpath, "AlloyCmdLine", analysisFile, outputFile] []
+     (exitcode, out, err) <- readProcessOutput "java" ["-cp",classpath, "AlloyCmdLine", analysisFile, outputFile] 
+--     (exitcode, out, err) <- readProcessWithExitCode "java" ["-cp",classpath, "AlloyCmdLine", analysisFile, outputFile] []
      case exitcode of
       ExitSuccess -> putStrLn out
       (ExitFailure _) -> fail err
 
+readProcessOutput :: FilePath -> [String] -> IO (ExitCode,String,String)
+readProcessOutput cmd args = do
+	(_, Just outh, Just errh, pid) <-
+		createProcess (proc cmd args) { std_out = CreatePipe,
+						std_err = CreatePipe }
+	putLines outh
+	err <- hGetContents errh
+	ex <- waitForProcess pid
+	return (ex, "", err)
+
+putLines :: Handle -> IO ()
+putLines outh = do
+	result <- try (hGetLine outh)
+	case result of
+	  Left e -> if isEOFError e then return () else ioError e
+	  Right line -> do putStrLn line ; putLines outh
 
 report :: Config -> [(String,Oblig)] -> IO ()
 

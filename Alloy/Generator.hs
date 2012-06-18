@@ -17,8 +17,10 @@ showAlloy env (Node (_,Spec) [locals, pre, program, post]) =
      [out] <- lookupM "alloy.analysisoutput" env
      ls <- lookupM "alloy.analysislibraries" env
      [cp] <- lookupM "alloy.classpath" env
-     putStrLn ("Writing analysis file to " ++ afn)
+     putStrLn ("Calculating proof obligations... ")
      wpEnv <- calcWp program post
+     putStrLn ("... There are " ++ (show (length wpEnv) ++ " proof obligations.")
+     putStrLn ("Writing analysis file to " ++ afn)
      writeFile afn ((showLibraries ls) ++ (showSpec locals pre wpEnv))
      report <- runAnalyzer cp afn out
      putStrLn report
