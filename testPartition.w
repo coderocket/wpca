@@ -9,7 +9,7 @@
   [] a[N-1] >= pivot -> skip
   fi
 ; keeping
-	0 < l and l < N and 0 < u and u < N and l <= u and permutation[a,A] and (all j : 0..l-1 | a[j] <= pivot) and all j : u..N-1 | a[j] >= pivot  
+	0 < l < N and 0 < u < N and l <= u and permutation[a,A] and (all j : 0..l-1 | a[j] <= pivot) and all j : u..N-1 | a[j] >= pivot  
   do l != u -> 
     if a[l] <= pivot -> l := l + 1
     [] a[u-1] >= pivot -> u := u - 1
@@ -17,4 +17,4 @@
     fi
   od
 ; i := l
-	{ 0 < i and i < N and permutation[a,A] and (all j : 0..i-1 | a[j] <= pivot) and all j : i..N-1 | a[j] >= pivot } 
+	{ 0 < i < N and permutation[a,A] and (all j : 0..i-1 | a[j] <= pivot) and all j : i..N-1 | a[j] >= pivot } 
