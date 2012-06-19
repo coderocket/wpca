@@ -4,6 +4,7 @@ import Data.Tree
 import Config.Parser
 import LookupMonad
 import Alloy.WPC
+import Typechecker
 import System.Process
 import System.Exit
 import System.IO
@@ -92,14 +93,14 @@ cvars :: Env -> AST -> Env
 -- the left hand side is a state variable and the right
 -- hand side is the constant variable.
 
-cvars types (Node (_,Eq) [(Node (_,String v) []), (Node (p,String c) [])]) =
-  case (lookup v types) of
-    (Just t) -> case (lookup c types) of
-      Nothing -> [(c, Node (p, Const) [t])]
+cvars types (Node (_,Eq) [expr, (Node (p,String c) [])]) =
+    case (lookup c types) of
+      Nothing -> [(c, Node (p, Const) [typeof types expr])]
       (Just _) -> []
-    Nothing -> []
 
-cvars types (Node (_, Conj) [x, y]) = (cvars types x) ++ (cvars types y)
+cvars types (Node (_, Conj) [x, y]) = xtypes ++ (cvars (xtypes++types) y)
+  where xtypes = cvars types x
+
 cvars types _ = []
 
 calcObligs (Node (_,Spec) [locals, pre, program, post]) = 
@@ -191,7 +192,6 @@ analyse cfg =
      [outputFile] <- lookupM "alloy.analysisoutput" cfg
      [classpath] <- lookupM "alloy.classpath" cfg
      (exitcode, out, err) <- readProcessOutput "java" ["-cp",classpath, "AlloyCmdLine", analysisFile, outputFile] 
---     (exitcode, out, err) <- readProcessWithExitCode "java" ["-cp",classpath, "AlloyCmdLine", analysisFile, outputFile] []
      case exitcode of
       ExitSuccess -> putStrLn out
       (ExitFailure _) -> fail err
@@ -211,7 +211,7 @@ putLines outh = do
 	result <- try (hGetLine outh)
 	case result of
 	  Left e -> if isEOFError e then return () else ioError e
-	  Right line -> do putStrLn line ; putLines outh
+	  Right line -> do putStrLn line ; hFlush stdout; putLines outh
 
 report :: Config -> [(String,Oblig)] -> IO ()
 
