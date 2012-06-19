@@ -1,18 +1,12 @@
-- support ternary relational expressions.
+- support constant variables of arbitrary expressions
 
-instead of writing
+for example:
 
-0 < i and i < N
+a : array of N T
 
-write
+	{ a = A and A[0] = Pivot }
 
-0 < i < N
-
-how to support a ternary operator like this one?
-
-expr : term '<' term | term '<' term '<' term | term
-
-term : term '+' term | term '-' term | integer
+should make Pivot a constant of type T
 
 - support concurrency based on the Gries/Owiki theory
 
@@ -85,13 +79,130 @@ to support procedures we need to:
 1. decide on a syntax of a procedure in particular how we specify
 input and output variables.
 
-2. define the wp semantics of a procedure. 
+procedure partition(a : in out array of N int, i : out int)
+	require a = A and N > 1 and A[0] = Pivot
+{
+  // ... code
+}
+	ensure 0 < i < N and permutation[a,A] and (all j : 0..i-1 | a[j] <= Pivot) and all j : i..N-1 | a[j] >= Pivot
+
+If we omit the body of the procedure then we may use its require and
+ensure clauses as its specification.
+
+2. define the wp semantics of a procedure:
+
+We have two independent things:
+
+2.1. Check that the procedure's body satisfies its specification
+
+This is easy: Convert the parameters into state variables and run
+the existing checks.
+
+2.2. Define the wp semantics of the procedure _assuming_ that it
+satisfies its specification.
+
+Let V be a vector of n variables and let E be a vector of N 
+expressions.
+
+procedure p[V]
+	require Pre
+	ensure Post
+
+wp (p[E], Q) = Pre[V/E] and all out(E) | Post[V/E] => Q[V/E]
+
+where out(E) is the list of expressions that appear in the
+call in the position of an out variable.
+
+Consider:
+
+procedure max[x,y : in, z : out]
+	require { true }
+	ensure { z >= x and z >= y and (z = x or z = y) }
+
+and the call
+
+max[1,2,u]
+ 
+Here: 
+
+V = x,y,z
+E = 1,2,u
+out(E) = u
+
+wp (max[1,2,u], u > 3) 
+= all u | u >= 1 and u >= 2 and (u = 1 or u = 2) => u > 3
+
+another example:
+
+procedure unique[a : in out array of N int, n : out int]
+	require 
+		a = A and all i,j : 0..N-1 | i <= j => a[i] <= a[j]
+	ensure 
+		(all i,j : 0..n-1 | i!=j => a[i] != a[j]) and all i : 0..N-1 | some j : 0..n-1 | A[i] = a[j]	
+
+how do we deal with array size variables such as N? 
+	substitute for the size of the array in the call
+how do we deal with constant variables such as A? 
+
+x,y : array of K int
+; unique[x]
+; unique[y]
+
+a more simple example that demonstrates the problem:
+
+procedure inc[x:in out int]
+  require x = X
+  ensure x = X + 1
+
+x : int
+	{ x = Y }
+  inc[x]
+; inc[x]
+	{ x = Y + 2 }
+
+wp (inc[x];inc[x], x = Y + 2)
+= wp (inc[x], wp(inc[x], x = Y + 2)
+= wp (inc[x], some X | x = X and all x : int | x = X + 1 => x = Y + 2)
+= wp (inc[x], some X | x = X and X+1 = Y+2 }
+= wp (inc[x], some X | x = X and X = Y+1 }
+= wp (inc[x], x = Y+1)
+= some X | x = X and all x : int | x = X + 1 => x = Y + 1
+= some X | x = X and X = Y
+= x = Y
+
+So we must existentialy quantify the constants. However because the
+constants are always defined by an equation we can shortcut the
+quantifier and instead directly substitute for the constant's value:
+
+wp (inc[x];inc[x], x = Y + 2)
+= wp (inc[x], wp(inc[x], x = Y + 2)
+= wp (inc[x], (all x : int | x = X + 1 => x = Y + 2)[X/x])
+= wp (inc[x], (X+1 = Y+2)[X/x] }
+= wp (inc[x], x = Y+1)
+= (all x : int | x = X + 1 => x = Y + 1)[X/x]
+= (X = Y)[X/x]
+= x = Y
+
+procedure swap[x,y : in out int]
+	require x = X and y = Y
+	ensure x = Y and y = X
+
+a,b,c : int
+	{ a = A and b = B and c = C }
+; swap[a,b]
+; swap[b,c]
+	{ a = B and b = C and c = A }
 
 
-- refactor the code into separate programs and use a shell script to
-bind them together.
+wp (swap[a,b]; swap[b,c], a = B and b = C and c = A)
+= wp(swap[a,b], wp(swap[b,c], a = B and b = C and c = A))
+= wp(swap[a,b], some U,V | b = U and c = V and 
+		all b,c:int | b = V and c = U => a = B and b= C and c = A)
+= wp(swap[a,b], some U,V | b = U and c = V and 
+				a = B and V = C and U = A)
+= wp(swap[a,b], a = B and c = C and b = A)
+= wp(swap[a,b], a = B and b = A)
 
-  this will greatly simplify the code and the names of each program.
 
 - refactor the code to reflect the architecture
 
@@ -127,6 +238,23 @@ we need to display the following information:
 - what are the values that cause the program to follow this path? 
 
 Done
+
+- support ternary relational expressions.
+
+instead of writing
+
+0 < i and i < N
+
+write
+
+0 < i < N
+
+how to support a ternary operator like this one?
+
+expr : term '<' term | term '<' term '<' term | term
+
+term : term '+' term | term '-' term | integer
+
 
 - add support for displaying skolem variables. these occur when the
 counterexample contradicts a universal quantifier.

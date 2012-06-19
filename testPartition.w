@@ -3,7 +3,7 @@
 ; pivot : int
 ; i : nat
 ; l,u : int
-	{ a = A and N > 1 and a[0] = pivot }
+	{ a = A and N > 1 and A[0] = pivot }
 ; l,u := 1,N-1
 ; if a[N-1] < pivot -> a[0],a[N-1] := a[N-1],a[0]
   [] a[N-1] >= pivot -> skip
