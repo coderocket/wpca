@@ -41,6 +41,7 @@ typeof env (Node (p, Join) [x,y]) =
     (Node (_, Type "int") []) -> 
       case (typeof env y) of
         (Node (_, ArrayType _ t) []) -> Node (startLoc, Type t) []
+        (Node (_, Const) [Node (_, ArrayType _ t) []]) -> Node (startLoc, Type t) []
         _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to de-reference a non-array")
     _ -> error ("Type mismatch: " ++ (show p) ++ ": array index must be an integer")
 

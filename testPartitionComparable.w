@@ -1,6 +1,5 @@
   N : nat
 ; a : array of N Comparable
-; pivot : Comparable
 ; i : nat
 ; l,u : int
 	{ a = A and N > 1 and A[0] = pivot }

@@ -1,21 +1,18 @@
+- change the definition of an array such that the size variable is a constant.
+
+Instead of
+
+  N : nat
+; a : array of N int
+
+Write
+
+  a : array of N int
+
+and the meaning is that N becomes a constant of type whose size can never be
+negative.
+
 - support user defined types
-
-- support comparable objects 
-
-By using an abstract comparable object we can significantly improve the
-speed of the analysis because without a comparable object we are forced
-to use integers but by default there are 16 integers which makes the
-analysis slow.
-
-- support constant variables of arbitrary expressions
-
-for example:
-
-a : array of N T
-
-	{ a = A and A[0] = Pivot }
-
-should make Pivot a constant of type T
 
 - support concurrency based on the Gries/Owiki theory
 
@@ -250,6 +247,23 @@ we need to display the following information:
 - what are the values that cause the program to follow this path? 
 
 Done
+
+- support comparable objects 
+
+By using an abstract comparable object we can significantly improve the
+speed of the analysis because without a comparable object we are forced
+to use integers but by default there are 16 integers which makes the
+analysis slow.
+
+- support constant variables of arbitrary expressions
+
+for example:
+
+a : array of N T
+
+	{ a = A and A[0] = Pivot }
+
+should make Pivot a constant of type T
 
 - support ternary relational expressions.
 
