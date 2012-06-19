@@ -1,3 +1,12 @@
+- support user defined types
+
+- support comparable objects 
+
+By using an abstract comparable object we can significantly improve the
+speed of the analysis because without a comparable object we are forced
+to use integers but by default there are 16 integers which makes the
+analysis slow.
+
 - support constant variables of arbitrary expressions
 
 for example:
@@ -177,7 +186,9 @@ quantifier and instead directly substitute for the constant's value:
 wp (inc[x];inc[x], x = Y + 2)
 = wp (inc[x], wp(inc[x], x = Y + 2)
 = wp (inc[x], (all x : int | x = X + 1 => x = Y + 2)[X/x])
-= wp (inc[x], (X+1 = Y+2)[X/x] }
+= wp (inc[x], (all u : int | u = X + 1 => u = Y + 2)[X/x])
+= wp (inc[x], (all u : int | u = x + 1 => u = Y + 2))
+= wp (inc[x], x+1 = Y+2)
 = wp (inc[x], x = Y+1)
 = (all x : int | x = X + 1 => x = Y + 1)[X/x]
 = (X = Y)[X/x]
@@ -201,7 +212,8 @@ wp (swap[a,b]; swap[b,c], a = B and b = C and c = A)
 = wp(swap[a,b], some U,V | b = U and c = V and 
 				a = B and V = C and U = A)
 = wp(swap[a,b], a = B and c = C and b = A)
-= wp(swap[a,b], a = B and b = A)
+= wp(swap[a,b], a = B and b = A and c = C)
+= a = A and b = B and c = C
 
 
 - refactor the code to reflect the architecture

@@ -1,6 +1,11 @@
-open util/integer
-
 module misc
+
+open util/integer
+open util/ordering[Comparable] as ComparableOrder
+
+sig Object {}
+
+sig Comparable extends Object {}
 
 pred true { no none }
 pred false { some none }

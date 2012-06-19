@@ -169,6 +169,7 @@ BasicType : 'int' { ($1,"int") }
 	| 'nat' { ($1,"nat") }
 
 CompoundType : 'array' 'of' name BasicType { Node ($1, ArrayType (snd $3) (snd $4)) [] }
+	| 'array' 'of' name name { Node ($1, ArrayType (snd $3) (snd $4)) [] }
 
 ExprList : Expr { [$1] }
 	| ExprList ',' Expr { $3:$1 }
