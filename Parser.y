@@ -110,11 +110,11 @@ GuardedCommands : Expr '->' Seq { [Node ($2,List) [$1,$3]] }
 Assign : AssignOk { makeAssign $1 }
     | AssignError { $1 }
 
-AssignOk : Expr ':=' Expr { ([$1], [$3]) }
-	| Expr ',' AssignOk ',' Expr { join $1 $3 $5 }
+AssignOk : Term ':=' Term { ([$1], [$3]) }
+	| Term ',' AssignOk ',' Term { join $1 $3 $5 }
 
 AssignError : AssignOk ',' {% failWithLoc $2 "assignment has more expressions than variables." }
-    | Expr ',' AssignOk {% failWithLoc $2 "assignment has more variables than expressions." }
+    | Term ',' AssignOk {% failWithLoc $2 "assignment has more variables than expressions." }
 
 Pre : '{' Expr '}' { $2 }
 
@@ -129,10 +129,7 @@ Expr : Expr 'and' Expr { Node ($2,Conj) [$1, $3] }
 Comprehension : 'sum' Locals '|' Expr %prec SUM { Node ($1, Quantifier Sum) [$2,$4] } 
 	| 'all' Locals '|' Expr %prec ALL { Node ($1, Quantifier All) [$2,$4] } 
 	| 'no' Locals '|' Expr %prec ALL { Node ($1, Quantifier No) [$2,$4] } 
-	| 'some' LocalsOpt Expr %prec ALL { case $2 of [] -> Node ($1, SomeSet) [$3] ; otherwise -> Node ($1, Quantifier Some)[ Node ($1, Locals) $2, $3] } 
-
-LocalsOpt : LocalsList '|' { $1 }
-	| { [] }
+	| 'some' Locals '|' Expr %prec ALL { Node ($1, Quantifier Some) [$2,$4] }
 
 Relat :  Term '>' Term { Node ($2, Greater) [$1,$3] }
 	| Term '<' Term { Node ($2, Less) [$1,$3] }
@@ -144,6 +141,7 @@ Relat :  Term '>' Term { Node ($2, Greater) [$1,$3] }
 	| Term '<=' Term '<' Term { (Node ($2, Leq) [$1,$3]) `conj` (Node ($4, Less) [$3,$5]) }
 	| Term '<' Term '<=' Term { (Node ($2, Less) [$1,$3]) `conj` (Node ($4, Leq) [$3,$5]) }
 	| Term '<=' Term '<=' Term { (Node ($2, Leq) [$1,$3]) `conj` (Node ($4, Leq) [$3,$5]) }
+	| 'some' Term { Node ($1, SomeSet) [$2] }
 	| Term { $1 }
 
 Term: '-' Term { Node ($1, Neg) [$2] }
@@ -163,7 +161,7 @@ Factor: Type { $1 }
 	| 'false' { Node ($1, AST.False) [] }
 	| name { Node (fst $1, String (snd $1)) [] }
 	| '(' Expr ')' { $2 }
-	| Factor '[' ExprList ']' { Node ($2, Join) ($3++[$1]) }
+	| Factor '[' TermList ']' { Node ($2, Join) ($3++[$1]) }
 
 Type : BasicType { Node (fst $1, Type (snd $1)) [] } 
 	| CompoundType { $1 }
@@ -174,8 +172,8 @@ BasicType : 'int' { ($1,"int") }
 CompoundType : 'array' 'of' name BasicType { Node ($1, ArrayType (snd $3) (snd $4)) [] }
 	| 'array' 'of' name name { Node ($1, ArrayType (snd $3) (snd $4)) [] }
 
-ExprList : Expr { [$1] }
-	| ExprList ',' Expr { $3:$1 }
+TermList : Term { [$1] }
+	| TermList ',' Term { $3:$1 }
 {
 
 makeAssign (names,exprs) = 
