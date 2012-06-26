@@ -1,6 +1,9 @@
 
-- support heap allocated objects. This requires a wp model of the heap,
-a model of records and syntax for the wpca language:
+- support heap allocated objects. 
+
+
+This requires a wp model of the heap, a model of records and syntax for
+the wpca language:
 
 The signature 'Object' is the set of all objects that are allocated
 dynamically from the heap. The set 'heap' holds all the objects that
@@ -99,8 +102,6 @@ and a special operation to test if a reference exists:
 
 2. What if we clear all the references to an object? without a garbage
 collector this will create a leak!
-
-
 
 
 - change the definition of an array such that the size variable is a constant.
