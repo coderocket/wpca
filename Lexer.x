@@ -22,6 +22,7 @@ tokens :-
   ","                                   { \p s -> TokComma (loc p) }
   ";"                                   { \p s -> TokSemi (loc p) }
   ".."                                   { \p s -> TokRange (loc p) }
+  "."                                   { \p s -> TokDot (loc p) }
   ":"                                   { \p s -> TokColon (loc p) }
   "[]"                                  { \p s -> TokSquare (loc p) }
   "["                                  { \p s -> TokLSquare (loc p) }
@@ -68,6 +69,7 @@ loc (AlexPn _ line col) = (line,col)
 
 data Token =
 	TokRange Loc |
+	TokDot Loc |
 	TokTrue Loc |
 	TokFalse Loc |
 	TokGreater Loc |
@@ -113,10 +115,11 @@ data Token =
 	TokSome Loc |
 	TokNo Loc |
 	TokBar Loc |
-	TokKeep Loc
+	TokKeep Loc 
 	deriving (Eq,Show)
 
 pos (TokRange p) = p
+pos (TokDot p) = p
 pos (TokTrue p) = p
 pos (TokFalse p) = p
 pos (TokGreater p) = p

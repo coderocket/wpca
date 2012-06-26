@@ -1,3 +1,108 @@
+
+- support heap allocated objects. This requires a wp model of the heap,
+a model of records and syntax for the wpca language:
+
+The signature 'Object' is the set of all objects that are allocated
+dynamically from the heap. The set 'heap' holds all the objects that
+are currently allocated.
+
+heap : set Object
+ 
+The keywords new and delete allocate and de-allocate objects:
+
+x := new Object
+= any obj : Object - heap | heap,x := heap + obj, x
+
+there are two important points here:
+
+1. This is a new non-deterministic command. 
+
+2. What happens if Object = heap? 
+
+We can handle this problem by generating a proof obligation that requires
+that there are available objects.
+
+In other words, this is a partial non-determinstic statement:
+
+wp(any x : X | S, P) = some x : X | wp(S,P)
+
+The delete statement de-allocates an object:
+
+wp (delete x,P)
+= x in heap and P[heap/heap - x]
+
+
+We must now discuss how we model records that reference objects because
+without such records there is no point to all this heap business.
+
+A record has the following wpca syntax:
+
+record <name> {
+  (<name> : (one | lone | set) <type>,)*
+  <name> : (one | lone | set) <type>
+}
+
+for example:
+
+record node {
+  data : one int,
+  next : lone node
+}
+
+This has the following alloy semantics:
+
+sig node extends Object {
+  data : one int,
+  next : lone node
+}
+
+Consider now a program that uses records:
+
+  i : int
+; x : node
+	{ x in heap }
+ ; i := x.data
+ ; x.data := 1
+  
+The semantics of record fields is similar to arrays:
+
+ x.data := 1
+=
+ data := data ++ (x -> 1) 
+
+Adding heap allocated records raises the following questions:
+
+1. What if we delete an object x that is accessible from a reachable object?
+
+We should ensure that we never delete an object that is accessible from
+a reachable object. There are two ways we may approach this problem:
+
+1.1. Add this assertion before every delete statement.
+
+1.2. Add a proof obligation to every expression that uses heap
+objects. The proof obligation checks that the object is allocated.
+
+Either option means that we must be able to model the set of objects
+that are accessible to the program. These objects are the ones that are
+referenced directly or indirectly by the state variables of the program.
+
+The second option is more flexible because it supports programs where
+we first delete an object and then remove it from the objects that
+reference it.  However, it will generate diagnostics that are more
+difficult to trace because it will be difficult to locate the delete
+statement that was responsible for the violation.
+
+But how do we indicate that we no longer want to refer to an object? We
+don't want to use a NULL id because this sentinel tends to leak into the
+data. Instead we will provide a special operation to clear a reference
+and a special operation to test if a reference exists:
+
+2. What if we clear all the references to an object? without a garbage
+collector this will create a leak!
+
+
+
+
 - change the definition of an array such that the size variable is a constant.
 
 Instead of
@@ -24,7 +129,7 @@ the goal.
 
 - compare wpca to: B-Toolkit, Forge, DynAlloy, Spark
 
-- extend the wpca language to have a section of alloy definitions
+- extend the wpca language to have a section of alloy definitions.
 this has several benefits:
 
 1. When the Alloy definitions in the code are separate from the

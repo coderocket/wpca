@@ -8,7 +8,7 @@ Alloy:
 	make -C Alloy
 
 Parser.hs : Parser.y
-	happy Parser.y
+	happy -i Parser.y
 
 Lexer.hs : Lexer.x
 	alex Lexer.x

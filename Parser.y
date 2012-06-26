@@ -41,6 +41,7 @@ import Loc
 	';'     { TokSemi $$ }
 	':'     { TokColon $$ }
 	'..'    { TokRange $$ }
+	'.'    	{ TokDot $$ }
 	'|'     { TokBar $$ }
 	'and'   { TokAnd $$ }
 	'or'   { TokOr $$ }
@@ -68,6 +69,7 @@ import Loc
 %nonassoc '..' SUM
 %left '+' '-' 
 %left '*' '/' 'mod' 'div'
+%left '.'
 %%
 
 Spec : Locals Pre ';' Seq Post { Node ($3,Spec) [$1, $2, $4, $5] }
@@ -108,14 +110,11 @@ GuardedCommands : Expr '->' Seq { [Node ($2,List) [$1,$3]] }
 Assign : AssignOk { makeAssign $1 }
     | AssignError { $1 }
 
-AssignOk : LValue ':=' Expr { ([$1], [$3]) }
-	| LValue ',' AssignOk ',' Expr { join $1 $3 $5 }
+AssignOk : Expr ':=' Expr { ([$1], [$3]) }
+	| Expr ',' AssignOk ',' Expr { join $1 $3 $5 }
 
 AssignError : AssignOk ',' {% failWithLoc $2 "assignment has more expressions than variables." }
-    | LValue ',' AssignOk {% failWithLoc $2 "assignment has more variables than expressions." }
-
-LValue : name { Node (fst $1, String (snd $1)) [] }
-	| name '[' Expr ']' { Node ($2, Join) [$3, Node (fst $1, String (snd $1)) []] }
+    | Expr ',' AssignOk {% failWithLoc $2 "assignment has more variables than expressions." }
 
 Pre : '{' Expr '}' { $2 }
 
@@ -155,6 +154,7 @@ Term: '-' Term { Node ($1, Neg) [$2] }
 	| Term 'mod' Term { Node ($2, Mod) [$1,$3] }
 	| Term 'div' Term { Node ($2, Div) [$1,$3] }
 	| Term '..' Term { Node ($2, Range) [$1,$3] }
+	| Term '.' Term { Node ($2, Join) [$1,$3] }
 	| Factor { $1 }
 
 Factor: Type { $1 }
