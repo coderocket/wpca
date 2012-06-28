@@ -159,18 +159,17 @@ Factor: Type { $1 }
 	| int { Node (fst $1, Int (snd $1)) [] }
 	| 'true' { Node ($1, AST.True) [] }
 	| 'false' { Node ($1, AST.False) [] }
-	| name { Node (fst $1, String (snd $1)) [] }
 	| '(' Expr ')' { $2 }
 	| Factor '[' TermList ']' { Node ($2, Join) ($3++[$1]) }
 
-Type : BasicType { Node (fst $1, Type (snd $1)) [] } 
+Type : BasicType { $1 }
 	| CompoundType { $1 }
 
-BasicType : 'int' { ($1,"int") }
-	| 'nat' { ($1,"nat") }
+BasicType : 'int'  { Node ($1, Type "int") [] }
+	| 'nat'  { Node ($1, Type "nat") [] }
+	| name { Node (fst $1, String (snd $1)) [] }
 
-CompoundType : 'array' 'of' name BasicType { Node ($1, ArrayType (snd $3) (snd $4)) [] }
-	| 'array' 'of' name name { Node ($1, ArrayType (snd $3) (snd $4)) [] }
+CompoundType : 'array' 'of' name BasicType { Node ($1, ArrayType (snd $3) (getName (snd (rootLabel $4)))) [] }
 
 TermList : Term { [$1] }
 	| TermList ',' Term { $3:$1 }
@@ -179,6 +178,10 @@ TermList : Term { [$1] }
 makeAssign (names,exprs) = 
   Node (p ,Assign) [Node (p, List) names, Node (p, List) exprs]  
   where p = fst (rootLabel (head names)) 
+
+getName :: Kind -> String
+getName (Type s) = s
+getName (String s) = s
 
 failWithLoc :: Loc -> String -> Either String a
 failWithLoc (line, col) err = Left $ err ++ " at " ++ (show line) ++ " line, " ++ (show col) ++ " column\n"
