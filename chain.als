@@ -9,11 +9,11 @@ pred chain[r:T -> T] {
 }
 
 fun maximal[r:T->T] : T {
-	{ e : T | e in T.*r and no e.r }
+	{ e : T | e in T.^r and no e.r }
 }
 
 fun minimal[r:T->T] : T {
-	{ e : T | e in *r.T and no r.e }
+	{ e : T | e in ^r.T and no r.e }
 }
 
 check {
@@ -29,6 +29,10 @@ check {
 	all next1,next2,next3 : T -> T |
 	(chain[next1] and chain[next2] and chain[next3] and disjoint[links[next1],links[next2],links[next3]]) => 
 		concat[concat[next1,next2],next3] = concat[next1,concat[next2,next3]]
+}
+
+check {
+  all x,y : T->T | no x and no y => no concat[x,y] 
 }
 
 fun links[x:T->T] : set T { T.x + x.T }

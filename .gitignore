@@ -4,3 +4,5 @@
 *.jar
 *.class
 *.pdf
+*.swp
+.DS_Store
