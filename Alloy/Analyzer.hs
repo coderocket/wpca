@@ -24,11 +24,9 @@ report based on the results of the analysis.
 work :: Config -> AST -> IO ()
 
 work cfg code = 
---  do generate cfg code
---     return ()
-  do obligs <- generate cfg code
+  do (obligs,types) <- generate cfg code
      analyse cfg 
-     report cfg obligs
+     report types cfg obligs
 
 {- To generate the model we follow these steps:
 
@@ -44,19 +42,26 @@ the report.
 
 -}
 
-generate :: Config -> AST -> IO ([(String,Oblig)])
+generate :: Config -> AST -> IO ([(String,Oblig)], Env)
 
 generate cfg code = 
   do putStrLn "Generating model..." 
      stateVars <- return $ getStateVars code
      constants <- return $ getConstants code 
-     acode <- augment code
+     acode <- augment (tidyJoins code)
      obligs <- calcObligs acode
      [analysisFile] <- lookupM "alloy.analysisfile" cfg
      libraries <- lookupM "alloy.analysislibraries" cfg
      putStrLn ("... There are " ++ (show (length obligs)) ++ " proof obligations. Writing analysis file to " ++ analysisFile)
      writeFile analysisFile (showModel libraries stateVars constants obligs)
-     return obligs
+     return (obligs, stateVars ++ constants)
+
+-- Alloy does not care if the join is due to an array or due to a relation
+
+tidyJoins :: AST -> AST
+tidyJoins = foldRose f 
+  where f (pos, ArrayJoin) es = Node (pos, Join) es
+        f k es = Node k es
 
 augment :: AST -> IO (AST)
 
@@ -150,6 +155,7 @@ showA = foldRose f
         f (_, Implies) [x,y] = "(" ++ x ++ " => " ++ y ++")"
         f (_, Range) [x,y] = "range[" ++ x ++ "," ++ y ++ "]"
         f (_, Join) xs = (showJoin xs)
+        f (_, Product) xs = (showRel xs)
         f (_, Not) [x] = "!(" ++ x ++ ")"
         f (_, Neg) [x] = x ++ ".negate"
         f (_, Int x) [] = show x
@@ -176,6 +182,10 @@ showA = foldRose f
         f (_, Update) [x,y] = "(" ++ x ++ " ++ " ++ y  ++ ")"
 	f (_, Closure) [x] = x
 	f other ns = error ("Internal error: Don't know how to show " ++ (show other))
+
+showRel = foldr f ""
+  where f x [] = x
+	f x xs = "(" ++ x ++ ") -> (" ++ xs ++ ")"
 
 showJoin = foldr f ""
   where f x [] = x
@@ -214,19 +224,19 @@ putLines outh = do
 	  Left e -> if isEOFError e then return () else ioError e
 	  Right line -> do putStrLn line ; hFlush stdout; putLines outh
 
-report :: Config -> [(String,Oblig)] -> IO ()
+report :: Env -> Config -> [(String,Oblig)] -> IO ()
 
-report cfg obligs = 
+report types cfg obligs = 
   do [outputFile] <- lookupM "alloy.analysisoutput" cfg
      output <- readFile outputFile
      putStrLn ("... Parsing output file: " ++ outputFile)
      checks <- parseOutput output
-     putStrLn (showOutput obligs checks)
+     putStrLn (showOutput types obligs checks)
 
-showOutput :: [(String, Oblig)] -> [ (String, Maybe Instance) ] -> String
-showOutput wpEnv checks = foldr (++) "" (map f checks)
+showOutput :: Env -> [(String, Oblig)] -> [ (String, Maybe Instance) ] -> String
+showOutput types wpEnv checks = foldr (++) "" (map f checks)
   where f (name, Nothing) = ""
-        f (name, Just (Instance eqns)) = "\n("++name++") " ++ "When the program starts with:\n\n" ++ (showInst eqns) ++ "\n" ++ (pathOf name wpEnv) ++ (skolemVars eqns)
+        f (name, Just (Instance eqns)) = "\n("++name++") " ++ "When the program starts with:\n\n" ++ (showInst types eqns) ++ "\n" ++ (pathOf name wpEnv) ++ (skolemVars types eqns)
 
 pathOf :: String -> [(String, Oblig)] -> String
 
@@ -240,34 +250,69 @@ showPath [] = ""
 showPath [(line,col)] = "Line " ++ (show line) ++ " column " ++ (show col)
 showPath ((line,col):(r:rest)) = "Line " ++ (show line) ++ " column " ++ (show col) ++ " then\n" ++ (showPath (r:rest))
 
-showInst [] = ""
-showInst ((Set _ _):rest) = showInst rest
-showInst ((Relation kind name tuples):rest) =
-  if kind == "State"
-  then name ++ "=" ++ (showTuples (map tail tuples)) ++"\n" ++ (showInst rest)
-  else showInst rest
+showInst :: Env -> [Equation] -> String
 
-skolemVars :: [ Equation ] -> String
+showInst types [] = ""
+showInst types ((Set _ _):rest) = showInst types rest
+showInst types ((Relation kind name tuples):rest) =
+  if kind == "thisState"
+  then name ++ "=" ++ (showRelation types name (map tail tuples)) ++"\n" ++ (showInst types rest)
+  else showInst types rest
 
-skolemVars eqs = 
+skolemVars :: Env -> [ Equation ] -> String
+
+skolemVars types eqs = 
   if skolems == "" 
   then ""
   else "in particular for " ++ skolems
-  where skolems = showSkolem eqs
+  where skolems = showSkolem types eqs
 
-showSkolem :: [ Equation ] -> String
-showSkolem = foldr f "" 
-  where f (Relation "Local" name tuples) rest =
-                name ++ "=" ++ (showTuples tuples) ++"\n" ++ rest
+showSkolem :: Env -> [ Equation ] -> String
+showSkolem types = foldr f "" 
+  where f (Relation "Local" name tuples) rest = showRelation types name tuples
         f _ rest = rest 
 
-{- a hack while we don't have a type environment: if the tuple is unary
-treat it as a basic value, otherwise assume that it is an array.
+showRelation :: Env -> String -> [Tuple] -> String
+showRelation env name tuples = 
+  case (lookup name env) of 
+     Nothing -> error ("Type error: " ++ name ++ " is untyped.")
+     (Just t) -> showTuples t tuples
+
+showTuples :: AST -> [Tuple] -> String
+showTuples typ ts = 
+  case typ of
+    Node (_,Product) es -> "[" ++ (showAsRelation ts) ++ "]"
+    Node (_,ArrayType _ _) [] -> "[" ++ (showAsArray ts) ++ "]"
+    otherwise -> head (head ts)
+
+{-
+a tuple that represents a relation is a list of the form
+
+[[x11,...,x1n],[x21,...,x2n],...,[xm1,...xmn]]
+
+to show it as a relation we first convert each internal list into
+a single string of the form
+
+xi1 -> xi2 -> ... -> xin
+
+and then collect them together separated with commas
+
 -}
 
-showTuples :: [Tuple] -> String
-showTuples [] = "[]"
-showTuples ts = if (length (head ts)) == 1 then (head (head ts)) else ("[" ++ (showArray ts) ++ "]")
+showAsRelation :: [Tuple] -> String
+showAsRelation = separateByComma . (map showIndividualTuple)
+
+showIndividualTuple :: Tuple -> String
+showIndividualTuple = foldr f "" 
+  where f v [] = v
+        f v (t:ts) = v ++ "->" ++ (t:ts)
+
+separateByComma :: [String] -> String
+separateByComma = foldr f ""
+  where f v [] = v
+        f v (t:ts) = v ++ ", " ++ (t:ts)
+
+showAsArray = showArray
 
 {-
 a tuple that represents an array is a list of the form

@@ -28,6 +28,7 @@ tokens :-
   "["                                  { \p s -> TokLSquare (loc p) }
   "]"                                  { \p s -> TokRSquare (loc p) }
   "->"                                  { \p s -> TokArrow (loc p) }
+  "<->"                                  { \p s -> TokRel (loc p) }
   "("                                   { \p s -> TokLB (loc p) }
   ")"                                   { \p s -> TokRB (loc p) }
   "{"                                   { \p s -> TokLCurl (loc p) }
@@ -106,6 +107,7 @@ data Token =
 	TokOf Loc |
 	TokArray Loc |
 	TokArrow Loc |
+	TokRel Loc |
 	TokLSquare Loc |
 	TokRSquare Loc |
 	TokSquare Loc |
@@ -156,6 +158,7 @@ pos (TokFi p) = p
 pos (TokOf p) = p
 pos (TokArray p) = p
 pos (TokArrow p) = p
+pos (TokRel p) = p
 pos (TokLSquare p) = p
 pos (TokRSquare p) = p
 pos (TokSquare p) = p

@@ -17,7 +17,6 @@ import Alloy.Output.Lexer
   '/'           { TokSlash $$ }
   '{'           { TokLCurl $$ }
   '}'           { TokRCurl $$ }
-  'this'	{ TokThis $$ }
   'skolem'	{ TokSkolem $$ }
   'instance'	{ TokInstance $$ }
   'unsat'	{ TokUnsat $$ }
@@ -42,11 +41,12 @@ Instance : 'instance' Equations { Instance $2 }
 Equations : Equations Equation { $2:$1 }
   | Equation { [$1] }
 
-Equation : Word '=' '{' TuplesOrNothing '}' { Set $1 $4 }
-  | Word '/' Word '=' '{' TuplesOrNothing '}' { Set ($1 ++ $3) $6 }
-  | 'this' '/' Word '=' '{' TuplesOrNothing '}' { Set $3 $6 }
-  | 'this' '/' Word '<:' Word '=' '{' TuplesOrNothing '}' { Relation $3 $5 $8 }
+Equation : Path '=' '{' TuplesOrNothing '}' { Set $1 $4 }
+  | Path '<:' Word '=' '{' TuplesOrNothing '}' { Relation $1 $3 $6 }
   | 'skolem' Word '=' '{' TuplesOrNothing '}' { Relation "Local" $2 $5 }
+
+Path : Word { $1 } 
+	| Path '/' Word { $1 ++ $3 }
 
 Word : word { snd $1 }
 
@@ -59,7 +59,7 @@ Tuples : Tuples ',' Tuple { (reverse $3):$1 }
 Tuple : Tuple '->' Value { $3:$1 }
   | Value { [$1] }
 
-Value : word { snd $1 }
+Value : Path { $1 }
   | number { show (snd $1) }
 
 {

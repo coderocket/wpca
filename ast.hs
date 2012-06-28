@@ -6,11 +6,11 @@ type Env = [(String,AST)]
 
 type AST = Tree (Loc,Kind)
 
-data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assert | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | Greater | Less | List | Not | Break | ArrayType String String | Range | Quantifier Quantifier | StateVar String | ConstVar String | Pair | Union | Update | Closure | SomeSet 
-  deriving (Show)
+data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assert | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | ArrayJoin | Greater | Less | List | Not | Break | ArrayType String String | Range | Quantifier Quantifier | StateVar String | ConstVar String | Pair | Union | Update | Closure | SomeSet | Product
+  deriving (Eq,Show)
 
 data Quantifier = Sum | All | No | Some
-  deriving (Show)
+  deriving (Eq,Show)
 
 foldRose :: (a -> [b] -> b) -> Tree a -> b
 foldRose f (Node x ts) = f x (map (foldRose f) ts)

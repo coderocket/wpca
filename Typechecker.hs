@@ -36,7 +36,7 @@ typeof env (Node (p, String n) []) =
 -- The following rule is specific for typechecking arrays. It must be modified to support
 -- additional join expressions
 
-typeof env (Node (p, Join) [x,y]) = 
+typeof env (Node (p, ArrayJoin) [x,y]) = 
   case (typeof env x) of 
     (Node (_, Type "int") []) -> 
       case (typeof env y) of
@@ -44,6 +44,18 @@ typeof env (Node (p, Join) [x,y]) =
         (Node (_, Const) [Node (_, ArrayType _ t) []]) -> Node (startLoc, Type t) []
         _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to de-reference a non-array")
     _ -> error ("Type mismatch: " ++ (show p) ++ ": array index must be an integer")
+
+-- typeof (x.y) = T provided that
+-- typeof x = X and typeof y = X <-> T
+
+typeof env (Node (p, Join) [x,y]) = 
+  case (typeof env y) of
+    (Node (_, Product) [t1,t2]) -> if t1 == typeof env x 
+                                   then t2
+                                   else error ("Type mismatch at: " ++ (show p))
+    _ -> error ("Type mismatch: " ++ (show p) ++ " the expression " ++ (show y) ++ " is not a relation.")
+
+typeof _ uu = error ("unknown expression: " ++ (show uu))
 
 unary :: String -> AST -> Env -> Loc -> AST -> String -> AST
 unary argtype resulttype env p x opname = 

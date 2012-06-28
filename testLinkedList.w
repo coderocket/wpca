@@ -1,4 +1,4 @@
-; head, p : Node
+  head, p : Node
 ; x : T
 	{ list[head] }
 ; p := head

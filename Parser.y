@@ -51,6 +51,7 @@ import Loc
 	'if'    { TokIf $$ }
 	'fi'    { TokFi $$ }
 	'->'    { TokArrow $$ }
+	'<->'    { TokRel $$ }
 	'[]'    { TokSquare $$ }
 	'mod'	{ TokMod $$ }
 	'div'	{ TokDiv $$ }
@@ -69,6 +70,7 @@ import Loc
 %nonassoc '..' SUM
 %left '+' '-' 
 %left '*' '/' 'mod' 'div'
+%left '<->'
 %left '.'
 %%
 
@@ -153,6 +155,7 @@ Term: '-' Term { Node ($1, Neg) [$2] }
 	| Term 'div' Term { Node ($2, Div) [$1,$3] }
 	| Term '..' Term { Node ($2, Range) [$1,$3] }
 	| Term '.' Term { Node ($2, Join) [$1,$3] }
+	| Term '<->' Term { Node ($2, Product) [$1,$3] }
 	| Factor { $1 }
 
 Factor: Type { $1 }
@@ -160,7 +163,7 @@ Factor: Type { $1 }
 	| 'true' { Node ($1, AST.True) [] }
 	| 'false' { Node ($1, AST.False) [] }
 	| '(' Expr ')' { $2 }
-	| Factor '[' TermList ']' { Node ($2, Join) ($3++[$1]) }
+	| Factor '[' TermList ']' { Node ($2, ArrayJoin) ($3++[$1]) }
 
 Type : BasicType { $1 }
 	| CompoundType { $1 }
@@ -186,7 +189,10 @@ getName (String s) = s
 failWithLoc :: Loc -> String -> Either String a
 failWithLoc (line, col) err = Left $ err ++ " at " ++ (show line) ++ " line, " ++ (show col) ++ " column\n"
 
-parseError (t:tokens) = failWithLoc (pos t) "parse error\n"
+parseError (t:tokens) = 
+  failWithLoc (pos t) (case t of
+			(TokEq _) -> " '=' is not appropriate here, did you mean ':='?\n"
+			otherwise -> "parse error\n")
 
 parseError [] = Left "parse error at end of file\n"
 

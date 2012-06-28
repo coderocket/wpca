@@ -39,8 +39,12 @@ showC env = foldRose f
         f (_,Type n) [] = n
         f (_,ArrayType _ t) [] = t ++ "*"
         f (_,Join) xs = (showJoin xs)
+        f (_,ArrayJoin) xs = (showArrayJoin xs)
         f (_,String n) [] = case lookup n env of 
-          (Just _) -> "s->"++ n
+          Just (Node (_,Type _) []) -> "s->"++ n
+          Just (Node (_,String _) []) -> "s->"++ n
+          Just (Node (_,ArrayType _ _) []) -> "s->"++ n
+          Just (Node (_,Product) _) -> n  
           Nothing -> n
         f (_,Int x) [] = (show x)
         f (_,Neg) [x] = "-" ++ x
@@ -67,22 +71,27 @@ showC env = foldRose f
         f (_,List) [x] = x 
         f (_,Cond) [g,x,y] = "if (" ++ g ++ ") {\n" ++ x ++ "\n} else {\n" ++ y ++"}\n"
         f (_,Loop) [gs] = "while(1) {\n" ++ gs ++ "\n}\n"
-        f (_,x) xs = show x
+        f (_,x) xs = error ("C does not support " ++ show x)
 
+-- [x,y,z] => x->y->z
+
+showJoin = foldr f ""
+  where f x [] = x
+        f x xs = x ++ "->" ++  xs  
 
 -- a.b b[a]
 -- a.b.c (b.c)[a] c[b][a]
 -- a b c  => [a] [b] c => c [b] [a] => c[b][a]
 
-showJoin = (foldr (++) "") . reverse . (foldr f [])
+showArrayJoin = (foldr (++) "") . reverse . (foldr f [])
   where f x [] = [x]
         f x xs = ("[" ++ x ++ "]") :  xs  
 
 showLocals (Node (_,Locals) ds) = foldr f "" (declsToList ds) 
-  where f (n,t) ds = (showC [] t) ++ " " ++ n ++ ";\n" ++ ds
-
-showNewLocals (Node (_,Locals) ds) = foldr f "" (declsToList ds) 
-  where f (n,t) xs = (showC [] t) ++ " " ++ n ++ "_new;" ++ xs
+  where f (n,t) ds = case t of 
+                        Node (_,Product) _ -> ds 
+			Node (_,String s) [] -> s ++ " *" ++ n ++ ";\n" ++ ds
+                        otherwise -> (showC [] t) ++ " " ++ n ++ ";\n" ++ ds
 
 {-
 

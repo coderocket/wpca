@@ -22,7 +22,6 @@ tokens :-
   "{"           { tok $ \p s -> TokLCurl p }
   "}"           { tok $ \p s -> TokRCurl p }
   "Check"	{ tok $ \p s -> TokCheck p }
-  "this"	{ tok $ \p s -> TokThis p }
   "skolem"	{ tok $ \p s -> TokSkolem p }
   "---INSTANCE---"	{ tok $ \p s -> TokInstance p }
   "Unsatisfiable."	{ tok $ \p s -> TokUnsat p }
@@ -48,7 +47,6 @@ data Token =
 	TokSlash AlexPosn |
 	TokLCurl AlexPosn |
 	TokRCurl AlexPosn |
-	TokThis AlexPosn |
 	TokSkolem AlexPosn |
 	TokInstance AlexPosn |
 	TokCheck AlexPosn |
@@ -67,7 +65,6 @@ pos (TokCheck p) = p
 pos (TokSlash p) = p
 pos (TokLCurl p) = p
 pos (TokRCurl p) = p
-pos (TokThis p) = p
 pos (TokSkolem p) = p
 pos (TokWord (p, _)) = p
 pos (TokNumber (p, _)) = p
