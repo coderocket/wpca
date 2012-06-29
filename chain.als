@@ -49,3 +49,11 @@ fun subchain[b,e:T, next:T->T] : T -> T {
 	crange[b,e,next] <: next :> crange[b,e,next]
 }
 
+pred member[x:T, c:T->T] {
+	x in links[c]
+}
+
+pred separate[b1,e1:T,b2,e2:T,next:T->T] {
+	no crange[b1,e1,next] & crange[b2,e2,next]
+}
+

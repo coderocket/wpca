@@ -50,12 +50,20 @@ typeof env (Node (p, ArrayJoin) [x,y]) =
 
 typeof env (Node (p, Join) [x,y]) = 
   case (typeof env y) of
-    (Node (_, Product) [t1,t2]) -> if t1 == typeof env x 
+    (Node (_, Product) [t1,t2]) -> if t1 `sameTypeAs` typeof env x 
                                    then t2
-                                   else error ("Type mismatch at: " ++ (show p))
+                                   else error ("Type mismatch at: " ++ (show p) ++ (show t1) ++ " != " ++ (show (typeof env x)))
     _ -> error ("Type mismatch: " ++ (show p) ++ " the expression " ++ (show y) ++ " is not a relation.")
 
 typeof _ uu = error ("unknown expression: " ++ (show uu))
+
+sameTypeAs :: AST -> AST -> Bool
+
+sameTypeAs (Node (_, Type t) []) (Node (_, Type u) []) = t == u
+sameTypeAs (Node (_, String n) []) (Node (_, String m) []) = m == n
+sameTypeAs (Node (_, ArrayType t n) []) (Node (_, ArrayType u m) []) = m == n && t == u
+sameTypeAs (Node (_, Product) ts) (Node (_, Product) us) = foldr f Prelude.True (zip ts us)
+  where f (t,u) rest = (t `sameTypeAs` u) && rest 
 
 unary :: String -> AST -> Env -> Loc -> AST -> String -> AST
 unary argtype resulttype env p x opname = 
