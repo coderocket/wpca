@@ -1,51 +1,3 @@
-- support record fields
-
-To support an algorithm over dynamic data structures we add a new
-kind of variable: a relation variable. For example:
-
-next : Node <-> Node
-
-defines next to be a variable that holds relation between Node
-objects. Note: we cannot use the Alloy '->' symbol because it is
-already taken by the guarded command langauge.
-
-In a traditional programming language these variables are global.
-Therefore when we generate code we omit them from the list of state
-variables. For example, consider the following program:
-
-  head : Node
-; next : Node <-> Node
-; head.next = EOL
-
-The C code that corresponds to this program is:
-
-typedef struct _state {
-  Node* head;
-} state;
-
-algo(state* s) {
-  s->head->next = NULL
-}
-
-To do that we have to:
-
-1. Support Cartesian product expressions
-  - Identify '<->' as a token
-  - Allow '<->' in Expr and define its associativity and precedence
-  - Add '<->' to the AST
-  - Print '<->' in alloy
-  - Display counter-examples that involve relations that are not arrays
-  - In C Ignore variables whose type is a Cartesian product 
-
-2. Distinguish between array join and relational join
-  - Create a token for array 'join'
-  - In Alloy convert array join to relational join
-  - In C display array join using array syntax and relational join as
-    access to a struct field 
-
-3. In the C generator print array join as before and
-relational join using the arrow operator.
- 
 - support heap allocated objects. 
 
 This requires a wp model of the heap, a model of records and syntax for
@@ -167,6 +119,12 @@ negative.
 - support user defined types
 
 - support concurrency based on the Gries/Owiki theory
+
+  - how do we define which operations are atomic?
+
+  - how should we name the individual components?
+
+  - should we support parameterised components? how?
 
 - change the report to reflect the true meaning of the counter-example.
 
@@ -399,6 +357,55 @@ we need to display the following information:
 - what are the values that cause the program to follow this path? 
 
 Done
+
+- support record fields
+
+To support an algorithm over dynamic data structures we add a new
+kind of variable: a relation variable. For example:
+
+next : Node <-> Node
+
+defines next to be a variable that holds relation between Node
+objects. Note: we cannot use the Alloy '->' symbol because it is
+already taken by the guarded command langauge.
+
+In a traditional programming language these variables are global.
+Therefore when we generate code we omit them from the list of state
+variables. For example, consider the following program:
+
+  head : Node
+; next : Node <-> Node
+; head.next = EOL
+
+The C code that corresponds to this program is:
+
+typedef struct _state {
+  Node* head;
+} state;
+
+algo(state* s) {
+  s->head->next = NULL
+}
+
+To do that we have to:
+
+1. Support Cartesian product expressions
+  - Identify '<->' as a token
+  - Allow '<->' in Expr and define its associativity and precedence
+  - Add '<->' to the AST
+  - Print '<->' in alloy
+  - Display counter-examples that involve relations that are not arrays
+  - In C Ignore variables whose type is a Cartesian product 
+
+2. Distinguish between array join and relational join
+  - Create a token for array 'join'
+  - In Alloy convert array join to relational join
+  - In C display array join using array syntax and relational join as
+    access to a struct field 
+
+3. In the C generator print array join as before and
+relational join using the arrow operator.
+ 
 
 - support comparable objects 
 

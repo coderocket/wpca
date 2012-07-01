@@ -20,6 +20,7 @@ import Loc
 	'of'	{ TokOf $$ }
 	int	{ TokInt $$ }
 	name	{ TokName $$ }
+	'in'	{ TokIn $$ }
 	'+'	{ TokPlus $$ }
 	'*'	{ TokStar $$ }
 	'/'	{ TokSlash $$ }
@@ -46,6 +47,7 @@ import Loc
 	'and'   { TokAnd $$ }
 	'or'   { TokOr $$ }
 	'=>'   { TokImplies $$ }
+	'!'	{ TokNot $$ }
 	'do'    { TokDo $$ }
 	'od'    { TokOd $$ }
 	'if'    { TokIf $$ }
@@ -66,6 +68,7 @@ import Loc
 %left 'and'
 %left 'or'
 %right '=>'
+%nonassoc '!'
 %nonassoc '=' '!=' '>=' '<=' '>' '<' 
 %nonassoc '..' SUM
 %left '+' '-' 
@@ -125,6 +128,7 @@ Post : '{' Expr '}' { $2 }
 Expr : Expr 'and' Expr { Node ($2,Conj) [$1, $3] }
 	| Expr 'or' Expr { Node ($2,Disj) [$1, $3] }
 	| Expr '=>' Expr { Node ($2,Implies) [$1, $3] }
+	| '!' Expr { Node ($1,Not) [$2] }
 	| Comprehension { $1 }
 	| Relat { $1 }
 
@@ -143,6 +147,7 @@ Relat :  Term '>' Term { Node ($2, Greater) [$1,$3] }
 	| Term '<=' Term '<' Term { (Node ($2, Leq) [$1,$3]) `conj` (Node ($4, Less) [$3,$5]) }
 	| Term '<' Term '<=' Term { (Node ($2, Less) [$1,$3]) `conj` (Node ($4, Leq) [$3,$5]) }
 	| Term '<=' Term '<=' Term { (Node ($2, Leq) [$1,$3]) `conj` (Node ($4, Leq) [$3,$5]) }
+	| Term 'in' Term { Node ($2, In) [$1,$3] }
 	| 'some' Term { Node ($1, SomeSet) [$2] }
 	| Term { $1 }
 

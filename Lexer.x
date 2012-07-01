@@ -33,6 +33,8 @@ tokens :-
   ")"                                   { \p s -> TokRB (loc p) }
   "{"                                   { \p s -> TokLCurl (loc p) }
   "}"                                   { \p s -> TokRCurl (loc p) }
+  "in"                                   { \p s -> TokIn (loc p) }
+  "!"                                   { \p s -> TokNot (loc p) }
   "+"                                   { \p s -> TokPlus (loc p) }
   "-"                                   { \p s -> TokDash (loc p) }
   "*"                                   { \p s -> TokStar (loc p) }
@@ -82,6 +84,8 @@ data Token =
 	TokAnd Loc |
 	TokOr Loc |
 	TokImplies Loc |
+	TokIn Loc |
+	TokNot Loc |
 	TokPlus Loc |
 	TokStar Loc |
 	TokDash Loc |
@@ -133,6 +137,8 @@ pos (TokNatType p) = p
 pos (TokAnd p) = p
 pos (TokOr p) = p
 pos (TokImplies p) = p
+pos (TokIn p) = p
+pos (TokNot p) = p
 pos (TokPlus p) = p
 pos (TokStar p) = p
 pos (TokDash p) = p

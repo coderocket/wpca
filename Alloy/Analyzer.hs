@@ -150,6 +150,7 @@ showA = foldRose f
         f (_, Less) [x,y] = x ++ " < " ++ y
         f (_, Geq) [x,y] = x ++ " >= " ++ y
         f (_, Leq) [x,y] = x ++ " <= " ++ y
+        f (_, In) [x,y] = "(" ++ x ++ " in " ++ y ++ ")"
         f (_, Conj) [x,y] = x ++ " and " ++ y
         f (_, Disj) [x,y] = "("++ x ++ " or " ++ y++")"
         f (_, Implies) [x,y] = "(" ++ x ++ " => " ++ y ++")"
