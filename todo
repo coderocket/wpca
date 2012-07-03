@@ -1,3 +1,67 @@
+- better support for records
+
+define records to support fields and the null idiom.
+
+record Node {
+  data : T,
+  next : Node
+}
+
+is translated into the following alloy model:
+
+one sig NULL {}
+
+sig Node {}
+
+sig State {
+  data : Node -> T,
+  next : Node -> (Node + NULL)
+}
+
+in addition, every definition of a variable of type Node in the program becomes
+a definition of a variable of type Node+NULL in the model.
+
+in general, whenever we define a variable of type record we must add an option for
+this variable to be set to NULL. 
+
+- the alloy modules that define the predicates and functions of a wpca program
+must be specified in the program itself.
+
+one simple way to achieve this is to add a theory keyword at the end of the
+program:
+
+x,y,z : int
+	{ true }
+; if x < y -> z := y [] x >= y -> z := x fi
+	{ z = max[x,y] }
+
+theory maxmin
+
+where maxmin.als is an alloy file that defines the function max
+
+- how similar should wpca be to a programming language?
+
+- what is the best way to combine wpca with alloy?
+
+  - one way (as implemented in DynAlloy) is to embed wpca inside the
+  alloy language. this makes it easy to use all of the alloy constructs
+  (including scope definitions, predicates, functions, signature
+  definitions etc'). we can use the keyword 'proc' to define wpca
+  procedures:
+
+proc swap[x:T,y:T] 
+	{ x = X and y = Y }
+{ x,y := y,x }
+	{ x = Y and y = X }
+
+the problem is that using this approach will make it more difficult to
+generate code, in particular to generate data structure definitions. the
+central issue is that the constructs that define data structures are
+limited to ensure that we can generate from them efficient code. for
+example we cannot translate any sig into a struct because the sig may
+contain arbitrary relations.
+
+ 
 - support record fields
 
 To support an algorithm over dynamic data structures we add a new
