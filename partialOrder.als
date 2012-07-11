@@ -2,12 +2,17 @@ module partialOrderUtils[T]
 
 open util/relation
 
-pred tree[r : T->T] {
+pred dag[r : T->T] {
 	partialOrder[*r,T] and acyclic[r,T]
 }
 
+pred tree[r : T-> T] {
+	dag[r]
+	r in T lone -> T
+}
+
 pred list[r : T->T] {
-	tree[r]
+	dag[r]
 	r in T lone -> lone T
 }
 
@@ -33,10 +38,6 @@ fun before[r:T->T,e:T] : set T {
 
 fun between[r:T->T,b,e:T] : set T {
 	after[r,b] & before[r,e]
-}
-
-pred inbetween[p:T,r:T->T,b,e:T]  {
-	p in between[r,b,e]
 }
 
 fun last[r:T->T] : T {
@@ -89,8 +90,14 @@ check {
 		last[concat[x,y]] = last[x] 
 }
 
+// dags
+
+check {
+	all x : T->T, b,e : T | dag[x] => dag[ccrange[x,b,e]]
+}
+
 // trees
 
 check {
-	all x : T->T, b,e : T | tree[x] => tree[ccrange[x,b,e]]
+	all t : T -> T | list[t] => tree[t]
 }

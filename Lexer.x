@@ -61,6 +61,9 @@ tokens :-
   "array"                               { \p s -> TokArray (loc p) }
   "of"                                  { \p s -> TokOf (loc p) }
   "keeping"                             { \p s -> TokKeep (loc p) }
+  "record"                             { \p s -> TokRecord (loc p) }
+  "proc"                             { \p s -> TokProc (loc p) }
+  "theory"                             { \p s -> TokTheory (loc p) }
   $alpha [$alpha $digit]*		{ \p s -> TokName (loc p,s) }
   $digit+				{ \p s -> TokInt (loc p,(read s)) }
 {
@@ -71,6 +74,9 @@ loc (AlexPn _ line col) = (line,col)
 -- The token type:
 
 data Token =
+	TokRecord Loc |
+	TokProc Loc |
+	TokTheory Loc |
 	TokRange Loc |
 	TokDot Loc |
 	TokTrue Loc |
@@ -124,6 +130,9 @@ data Token =
 	TokKeep Loc 
 	deriving (Eq,Show)
 
+pos (TokRecord p) = p
+pos (TokProc p) = p
+pos (TokTheory p) = p
 pos (TokRange p) = p
 pos (TokDot p) = p
 pos (TokTrue p) = p
@@ -182,3 +191,4 @@ showPos :: AlexPosn -> String
 showPos (AlexPn addr line col) = (show line) ++ "_" ++ (show col)
 
 }
+
