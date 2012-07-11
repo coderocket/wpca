@@ -1,3 +1,36 @@
+- A simple model of dynamically allocated objects?
+
+  heap : seq Object
+	{ heap = HEAP }
+; alloc [p,T]
+	{ p = NULL => heap = HEAP and p != NULL => (p !in int.HEAP and p in T and heap = add[p,HEAP]) }
+
+abstracting (hiding) the heap we get
+
+	{ true }
+; alloc [p,T]
+	{ p = NULL or (p != NULL and p in T) }
+
+but then we have no way to indicate that p is disjoint from every
+other object that was allocated up to this point. Can we use a
+predicate for that?
+
+	{ true }
+; alloc [p,T]
+	{ p = NULL or (p != NULL and p in T and fresh[p]) }
+
+in the context of algorithmic programs can we assume that allocation
+succeeds? for if it fails the algorithm itself fails. Is it not
+then a separate concern that should be handled by other means?
+
+	{ true }
+; alloc [p,T]
+	{ p in T and fresh[p]) }
+
+no, that won't do because we cannot support such a specification
+in a finite model. there is always the chance that we will run out
+of memory.
+
 - support heap allocated objects. 
 
 This requires a wp model of the heap, a model of records and syntax for
