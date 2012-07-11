@@ -1,6 +1,4 @@
-  N : nat
-; a : array of N int
-; k,i : nat
+proc Partition[N : nat ; a : array of N int ; k,i : nat]
 	{ a = A and N > 1 and a[0] = pivot }
 ; if a[1] < a[0] -> a[0],a[1] := a[1],a[0] 
   [] a[1] >= a[0] -> skip

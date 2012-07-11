@@ -1,7 +1,4 @@
-  x : int 
-; N : nat
-; f : array of N int
-; i : int
+proc Search[x : int; N : nat; f : array of N int; i : int]
   { true }
 ; i := 0
 ; keeping

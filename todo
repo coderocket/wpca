@@ -1,3 +1,7 @@
+- prove that wpca is correct:
+  - prove that it calculates correctly the weakest precondition
+  - prove that every well typed program generates a valid C program
+  - prove that every well typed program generates a valid Alloy model
 
 - how to avoid record field names from different records from clashing?
 
@@ -53,7 +57,7 @@ Proc : 'proc' name '[' Declarations ']' '{' Expr '}' Stmt '{' Expr '}'
 each procedure is analyzed separately, for each procedure we create
 a separate analysis file. 
 
-We generate the program file based on the wpca file name. for example,
+- generate the program file based on the wpca file name. for example,
 the wpca file stack.w yields the C files stack.h and stack.c.
 
 - better support for records

@@ -1,7 +1,4 @@
-  x : int 
-; N : nat
-; f : array of N int
-; p,q,m : int
+proc binarySearch[x : int; N : nat; f : array of N int; p,q,m : int]
   { all i,j : 0..N-1 | i <= j => f[i] <= f[j] }
 ; p,q := -1,N
 ; keeping 

@@ -15,15 +15,37 @@ import List
 
 {- 
 
-To analyse a wpca program we first generate an alloy model from the code,
-then we run the alloy analyzer on the model and finally we generate a
-report based on the results of the analysis.
+A WPCA program consists of a set of record definitions and a set of
+procedure definitions. The record definitions are global to all the
+procedures but the analysis of each procedure is independent of the
+other procedures. Therefore, to analyze a WPCA program we analyze 
+each procedure independently, passing it the global set of record
+definitions.
 
 -}
 
 work :: Config -> AST -> IO ()
+work cfg (Node (_,Program) [records, Node (_,List) procs, theory]) = loop procs
+  where loop [] = return ()
+        loop (p:ps) = do analyzeProc cfg records theory p 
+                         loop ps
 
-work cfg code = 
+analyzeProc :: Config -> AST-> AST -> AST -> IO ()
+analyzeProc cfg records theory (Node (p,Proc name) [params,pre,body,post]) = 
+  do [analysisFile] <- lookupM "alloy.analysisfile" cfg 
+     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) (Node (p, Spec) [params,pre,body,post])
+
+{-
+
+To analyse a wpca procedure we first generate an alloy model from
+the code, then we run the alloy analyzer on the model and finally
+we generate a report based on the results of the analysis.
+
+-}
+
+analyzeSpec :: Config -> AST -> IO ()
+
+analyzeSpec cfg code = 
   do (obligs,types) <- generate cfg code
      analyse cfg 
      report types cfg obligs

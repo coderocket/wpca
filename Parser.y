@@ -79,11 +79,10 @@ import Loc
 %left '<->'
 %left '.'
 %%
-Spec : Locals Pre ';' Seq Post { Node ($3,Spec) [$1, $2, $4, $5] }
 
-Program : Records Procs Theory { ($1,$2,$3) }
-	| Procs Theory { ([],$1,$2) }
-	| Procs { ([],$1,"") }
+Program : Records Procs Theory { Node (startLoc,Program) [lta $1,lta $2,$3] }
+	| Procs Theory { Node (startLoc,Program) [lta [],lta $1,$2] }
+	| Procs { Node (startLoc, Program) [lta [],lta $1, string ""] }
 
 Records : Records Record { $2:$1 }
 	| Record { [$1] }
@@ -91,11 +90,11 @@ Records : Records Record { $2:$1 }
 Procs : Procs Proc { $2:$1 } 
 	| Proc { [$1] }
 
-Theory : 'theory' name { snd $2 }
+Theory : 'theory' name { Node ($1,String (snd $2)) [] }
 
 Record : 'record' name '{' LocalsList '}' { Node ($1, Record) $4 }
 
-Proc : 'proc' name '[' Locals ']' Pre ';' Seq Post { Node ($1, Proc) [ Node(fst $2, String (snd $2)) [],$4,$6,$8,$9] }
+Proc : 'proc' name '[' Locals ']' Pre ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$6,$8,$9] }
 
 Locals : LocalsList { Node (fst (rootLabel (head $1)), Locals) $1 }
 
@@ -200,6 +199,12 @@ CompoundType : 'array' 'of' name BasicType { Node ($1, ArrayType (snd $3) (getNa
 TermList : Term { [$1] }
 	| TermList ',' Term { $3:$1 }
 {
+
+position :: AST -> Loc
+position = fst . rootLabel
+
+lta :: [AST] -> AST
+lta asts = Node (startLoc, List) asts
 
 makeAssign (names,exprs) = 
   Node (p ,Assign) [Node (p, List) names, Node (p, List) exprs]  

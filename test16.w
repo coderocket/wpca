@@ -1,6 +1,4 @@
-  N : nat
-; f : array of N int
-; i, s : int
+proc Sum[N : nat; f : array of N int; i, s : int]
 { true }
 ; s := 0
 ; i := 1

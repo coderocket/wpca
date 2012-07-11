@@ -1,5 +1,4 @@
-  head, p : Node
-; x : T
+proc testList[head, p : Node; x : T]
 	{ list[head] }
 ; p := head
 ; keeping

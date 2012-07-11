@@ -1,5 +1,4 @@
-  next : Node <-> Node
-; h,p: Node
+proc Reverse[next : Node <-> Node; h,p: Node]
 	{ nullterminated[next,h] and h = H and next = NEXT }
 ; h,p := NULL,h
 ; keeping
