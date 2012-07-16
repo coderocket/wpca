@@ -92,7 +92,7 @@ Procs : Procs Proc { $2:$1 }
 
 Theory : 'theory' name { Node ($1,String (snd $2)) [] }
 
-Record : 'record' name '{' LocalsList '}' { Node ($1, Record) $4 }
+Record : 'record' name '{' LocalsList '}' { Node ($1, Record (snd $2)) $4 }
 
 Proc : 'proc' name '[' Locals ']' Pre ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$6,$8,$9] }
 

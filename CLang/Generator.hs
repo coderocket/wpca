@@ -6,6 +6,73 @@ import LookupMonad
 import Typechecker
 import Loc
 
+{-
+
+A WPCA program consists of a set of record definitions followed by 
+a set of procedure definitions. To generate a C program we have to
+create two files: a header file and a source file. The header file
+will contain all the structs that correspond to the records. and the
+prototypes of all the functions that correspond to the procedures. The 
+source file will include the header file and define all the functions.
+
+-}
+
+type ConfigEnv = [(String,[String])]
+
+generate :: ConfigEnv -> AST -> IO ()
+generate env program = 
+  do generateHeader env program 
+     generateSource env program
+
+generateHeader env program = 
+  do hs <- lookupM "c.headerfile" env
+     putStrLn ("Writing c header file to " ++ (head hs))
+     writeFile (head hs) (prepareHeader program)
+
+generateSource env program =
+  do cs <- lookupM "c.sourcefile" env
+     hs <- lookupM "c.headerfile" env
+     putStrLn ("Writing c source file to " ++ (head cs))
+     writeFile (head cs) (prepareSource (head cs) program)
+
+prepareHeader :: AST -> String
+prepareHeader (Node (_,Program) [Node (_,List) records, Node (_,List) procs, theory]) =
+  header ++ prepareStructs records ++ preparePrototypes procs ++ footer
+  where header = ""  
+        footer = ""
+
+prepareStructs :: [AST] -> String
+prepareStructs = foldr (++) "" . map prepareStruct
+
+prepareStruct :: AST -> String
+prepareStruct (Node (_,Record name) fields) = header ++ (prepareFields (declsToList fields)) ++ footer
+  where header = "typedef struct _" ++ name ++ " {\n"
+        footer = "} " ++ name ++ ";\n"
+
+prepareFields = foldr (++) "" . map prepareField
+prepareField :: (String,AST) -> String
+prepareField (name,tp) = "" ++ " " ++ name ++ ";"
+
+preparePrototypes :: [AST] -> String
+preparePrototypes = foldr (++) "" . map preparePrototype
+
+preparePrototype :: AST -> String
+preparePrototype (Node (_,Proc name) [Node (_,List) params,pre,body,post]) = 
+  "void " ++ name ++ "(" ++ prepareParams params ++ ");\n"
+
+prepareParams :: [AST] -> String
+prepareParams params = ""
+
+-- TODO: add the pre and post conditions as documentation above the prototype
+
+prepareFunctions :: [AST] -> String
+prepareFunctions procs = ""
+
+prepareSource :: String -> AST -> String
+prepareSource hfile (Node (_,Program) [Node (_,List) records, Node (_,List) procs, theory]) = header ++ prepareFunctions procs ++ footer
+  where header = "#include \"" ++ hfile ++ "\"\n"
+        footer = ""
+
 showCCode :: [(String,[String])] -> AST -> IO ()
 
 showCCode env ast =
