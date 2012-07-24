@@ -1,3 +1,4 @@
+- make 'sum' a term
 - prove that wpca is correct:
   - prove that it calculates correctly the weakest precondition
   - prove that every well typed program generates a valid C program
