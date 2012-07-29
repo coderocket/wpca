@@ -51,7 +51,7 @@ prepareStruct (Node (_,Record name) fields) = header ++ (prepareFields (declsToL
 
 prepareFields = foldr (++) "" . map prepareField
 prepareField :: (String,AST) -> String
-prepareField (name,tp) = "" ++ " " ++ name ++ ";"
+prepareField (name,tp) = (showCode tp) ++ " " ++ name ++ ";"
 
 preparePrototypes :: [AST] -> String
 preparePrototypes = foldr (++) "" . map (appendSemi . preparePrototype)
@@ -81,7 +81,7 @@ prepareFunctions = foldr (++) "" . map prepareFunction
 
 prepareFunction :: AST -> String
 prepareFunction proc =
-  preparePrototype proc ++ "{\n" ++ prepareBody proc ++ "}\n"
+  preparePrototype proc ++ " {\n" ++ prepareBody proc ++ "}\n"
 
 {-
 To prepare the body of a procedure we first normalize(see below) it 

@@ -12,7 +12,7 @@ import System.IO.Error
 import Alloy.Output.Parser
 import Data.Ord
 import List
-
+import Loc
 {- 
 
 A WPCA program consists of a set of record definitions and a set of
@@ -25,15 +25,15 @@ definitions.
 -}
 
 work :: Config -> AST -> IO ()
-work cfg (Node (_,Program) [records, Node (_,List) procs, theory]) = loop procs
+work cfg (Node (_,Program) [Node (_,List) records, Node (_,List) procs, theory]) = loop procs
   where loop [] = return ()
         loop (p:ps) = do analyzeProc cfg records theory p 
                          loop ps
 
-analyzeProc :: Config -> AST-> AST -> AST -> IO ()
+analyzeProc :: Config -> [AST]-> AST -> AST -> IO ()
 analyzeProc cfg records theory (Node (p,Proc name) [params,pre,body,post]) = 
   do [analysisFile] <- lookupM "alloy.analysisfile" cfg 
-     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) (Node (p, Spec) [params,pre,body,post])
+     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) records (Node (p, Spec) [params,pre,body,post])
 
 {-
 
@@ -43,10 +43,10 @@ we generate a report based on the results of the analysis.
 
 -}
 
-analyzeSpec :: Config -> AST -> IO ()
+analyzeSpec :: Config -> [AST] -> AST -> IO ()
 
-analyzeSpec cfg code = 
-  do (obligs,types) <- generate cfg code
+analyzeSpec cfg records code = 
+  do (obligs,types) <- generate cfg records code
      analyse cfg 
      report types cfg obligs
 
@@ -64,13 +64,13 @@ the report.
 
 -}
 
-generate :: Config -> AST -> IO ([(String,Oblig)], Env)
+generate :: Config -> [AST] -> AST -> IO ([(String,Oblig)], Env)
 
-generate cfg code = 
+generate cfg records code = 
   do putStrLn "Generating model..." 
-     stateVars <- return $ getStateVars code
-     constants <- return $ getConstants code 
-     acode <- augment (tidyJoins code)
+     stateVars <- return $ getStateVars records code
+     constants <- return $ getConstants records code 
+     acode <- augment records (tidyJoins code)
      obligs <- calcObligs acode
      [analysisFile] <- lookupM "alloy.analysisfile" cfg
      libraries <- lookupM "alloy.analysislibraries" cfg
@@ -85,9 +85,9 @@ tidyJoins = foldRose f
   where f (pos, ArrayJoin) es = Node (pos, Join) es
         f k es = Node k es
 
-augment :: AST -> IO (AST)
+augment :: [AST] -> AST -> IO (AST)
 
-augment code@(Node (pos,Spec) [locals, pre, program, post]) = 
+augment records code@(Node (pos,Spec) [locals, pre, program, post]) = 
   return $ Node (pos,Spec) [locals, f [] initEnv pre, f [] initEnv program, f [] initEnv post] 
   where f bound env (Node (pos, String n) []) = 
           case (elemIndex n bound) of 
@@ -99,18 +99,33 @@ augment code@(Node (pos,Spec) [locals, pre, program, post]) =
           augmentQuantifier bound env pos q decls body
         f bound env (Node datum children) = 
            Node datum (map (f bound env) children)
-        initEnv = [ (n, StateVar n) | (n,_) <- (getStateVars code) ] ++ [ (n, ConstVar n) | (n,_) <- getConstants code ]
+        initEnv = [ (n, StateVar n) | (n,_) <- (getStateVars records code) ] ++ [ (n, ConstVar n) | (n,_) <- getConstants records code ]
         augmentQuantifier bound env pos kind decls body =
           Node (pos, Quantifier kind) [Node (pos, Locals) (augmentDecls bound env (subForest decls)), f ((declNames decls)++bound) env body]
         augmentDecls bound env ds = [ Node (pos, Declaration) [ns, f bound env t] | (Node (pos,Declaration) [ns,t]) <- ds ]
   
-getStateVars :: AST -> Env
+getStateVars :: [AST] -> AST -> Env
 
-getStateVars (Node (_,Spec) [locals, pre, program, post]) = 
-  (declsToList (subForest locals)) 
+getStateVars records (Node (_,Spec) [locals, pre, program, post]) = 
+  getStateEnv records (subForest locals)
 
-getConstants (Node (_,Spec) [locals, pre, program, post]) = 
-  cvars (declsToList (subForest locals)) pre
+getConstants records (Node (_,Spec) [locals, pre, program, post]) = 
+  cvars (getStateEnv records (subForest locals)) pre
+
+getStateEnv :: [AST] -> [AST] -> Env
+getStateEnv records locals = 
+  (getRecordVars records) ++ (declsToList locals)
+
+getRecordVars :: [AST] -> Env
+getRecordVars = foldr (++) [] . map getFieldVars
+
+getFieldVars :: AST -> Env
+getFieldVars (Node (_,Record name) fields) = f fields 
+  where f = map (getFieldVar name) . declsToList 
+
+getFieldVar :: String -> (String,AST) -> (String,AST)
+getFieldVar left (relName, right) = 
+  (relName, Node (startLoc,Product) [ Node (startLoc,String left) [], right])
 
 cvars :: Env -> AST -> Env
 
