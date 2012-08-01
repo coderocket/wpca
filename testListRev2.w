@@ -1,4 +1,9 @@
-proc Reverse[next : Node <-> Node; h,p: Node]
+
+record Node {
+  next : Node 
+}
+
+proc Reverse[h,p: Node]
 	{ nullterminated[next,h] and h = H and next = NEXT }
 ; h,p := NULL,h
 ; keeping
@@ -7,3 +12,4 @@ proc Reverse[next : Node <-> Node; h,p: Node]
   od
 	{ nullterminated[next,h] and rev[corange[next,h,NULL]] = corange[NEXT,H,NULL] }
 
+theory list2

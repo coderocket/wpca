@@ -1,3 +1,13 @@
+- improve the type system:
+
+  - use a separate node for each basic type (int, nat?)
+  - use a separate node for record types
+  - find all the functions that operate on types and modify
+them to support the new types. 
+
+that won't work because we cannot distinguish variables from user defined
+type names (both are identifiers).
+
 - A simple model of dynamically allocated objects?
 
   heap : seq Object

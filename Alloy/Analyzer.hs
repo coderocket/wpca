@@ -13,6 +13,7 @@ import Alloy.Output.Parser
 import Data.Ord
 import List
 import Loc
+
 {- 
 
 A WPCA program consists of a set of record definitions and a set of
@@ -25,15 +26,15 @@ definitions.
 -}
 
 work :: Config -> AST -> IO ()
-work cfg (Node (_,Program) [Node (_,List) records, Node (_,List) procs, theory]) = loop procs
+work cfg (Node (_,Program) [Node (_,List) records, Node (_,List) procs, Node (_,String theory) []]) = loop procs
   where loop [] = return ()
-        loop (p:ps) = do analyzeProc cfg records theory p 
+        loop (p:ps) = do analyzeProc cfg theory records p 
                          loop ps
 
-analyzeProc :: Config -> [AST]-> AST -> AST -> IO ()
-analyzeProc cfg records theory (Node (p,Proc name) [params,pre,body,post]) = 
+analyzeProc :: Config -> String -> [AST]-> AST -> IO ()
+analyzeProc cfg theory records (Node (p,Proc name) [params,pre,body,post]) = 
   do [analysisFile] <- lookupM "alloy.analysisfile" cfg 
-     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) records (Node (p, Spec) [params,pre,body,post])
+     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) theory records (Node (p, Spec) [params,pre,body,post])
 
 {-
 
@@ -43,10 +44,10 @@ we generate a report based on the results of the analysis.
 
 -}
 
-analyzeSpec :: Config -> [AST] -> AST -> IO ()
+analyzeSpec :: Config -> String -> [AST] -> AST -> IO ()
 
-analyzeSpec cfg records code = 
-  do (obligs,types) <- generate cfg records code
+analyzeSpec cfg theory records code = 
+  do (obligs,types) <- generate cfg theory records code
      analyse cfg 
      report types cfg obligs
 
@@ -64,9 +65,9 @@ the report.
 
 -}
 
-generate :: Config -> [AST] -> AST -> IO ([(String,Oblig)], Env)
+generate :: Config -> String -> [AST] -> AST -> IO ([(String,Oblig)], Env)
 
-generate cfg records code = 
+generate cfg theory records code = 
   do putStrLn "Generating model..." 
      stateVars <- return $ getStateVars records code
      constants <- return $ getConstants records code 
@@ -75,7 +76,7 @@ generate cfg records code =
      [analysisFile] <- lookupM "alloy.analysisfile" cfg
      libraries <- lookupM "alloy.analysislibraries" cfg
      putStrLn ("... There are " ++ (show (length obligs)) ++ " proof obligations. Writing analysis file to " ++ analysisFile)
-     writeFile analysisFile (showModel libraries stateVars constants obligs)
+     writeFile analysisFile (showModel (libraries++[theory]) stateVars constants obligs)
      return (obligs, stateVars ++ constants)
 
 -- Alloy does not care if the join is due to an array or due to a relation
@@ -127,6 +128,20 @@ getFieldVar :: String -> (String,AST) -> (String,AST)
 getFieldVar left (relName, right) = 
   (relName, Node (startLoc,Product) [ Node (startLoc,String left) [], right])
 
+{- 
+When we translate a variable definition that binds a variable to a
+record type we must add the option that the variable may be NULL. 
+-}
+
+addNULLs :: Env -> Env
+addNULLs env = map f env
+  where f (name, Node (_,String t)[]) = (name, addNULL (string t)) 
+        f (name, Node (_,Product) [x,y]) = (name, (addNULL x) `AST.product` (addNULL y))
+        f (name, t) = (name, t)
+
+addNULL :: AST -> AST
+addNULL t = t `AST.union` (string "NULL")
+
 cvars :: Env -> AST -> Env
 
 -- To find the type of a constant (a.k.a model) variable
@@ -170,8 +185,22 @@ showOblig (nm, (wp, path, goal)) = "\n/*\ngoal: " ++ goal ++ "\npath: " ++ (show
 
 showEnv :: Env -> String
 showEnv [] = ""
-showEnv [(s,n)] = s ++ " : " ++ (showA n)
-showEnv ((s,n):ns) = s ++ " : " ++ (showA n) ++ ",\n" ++ (showEnv ns)
+showEnv [(s,n)] = showBinding (s,n)
+showEnv ((s,n):ns) = showBinding (s,n) ++ ",\n" ++ (showEnv ns)
+
+showBinding :: (String,AST) -> String
+showBinding (name, x) = name ++ " : " ++ (showType x)
+
+showType :: AST -> String
+showType = foldRose f
+  where f (_, Type "int") [] = "Int"
+        f (_, Type "nat") [] = "Int"
+        f (_, Type n) [] = n
+        f (_, ArrayType _ t) [] = if t == "int" then "seq Int" else ("seq " ++ t)
+        f (_, String n) [] = n ++ " + NULL"
+        f (_, Const) [x] = x
+        f (_, Product) xs = (showRel xs)
+	f other ns = error ("Internal error: Don't know how to show the type " ++ (show other)) 
 
 showA :: AST -> String
 showA = foldRose f
@@ -203,6 +232,7 @@ showA = foldRose f
         f (_, Type "int") [] = "Int"
         f (_, Type "nat") [] = "Int"
         f (_, Type n) [] = n
+	f (_, Output) [x] = x
         f (_, ArrayType _ t) [] = if t == "int" then "seq Int" else ("seq " ++ t)
         f (_, Locals) decls = showNames decls
         f (_, Declaration) [names, typ] = names ++ " : " ++ typ

@@ -28,6 +28,7 @@ typeof env (Node (p, Disj) [x,y]) = binary "bool" boolType env p x y "disjoin (o
 typeof env (Node (p, Implies) [x,y]) = binary "bool" boolType env p x y "(imply (=>)"
 typeof env (Node (p, Not) [x]) = unary "bool" boolType env p x "negate (logical not)"
 typeof env (Node (p, Neg) [x]) = unary "int" intType env p x "negate (-)"
+typeof env (Node (_, Output) [x]) = typeof env x
 typeof env (Node (p, String n) []) = 
   case (lookup n env) of
     (Just t) -> t
@@ -59,6 +60,8 @@ typeof _ uu = error ("unknown expression: " ++ (show uu))
 
 sameTypeAs :: AST -> AST -> Bool
 
+sameTypeAs (Node (_, Output) [x]) y = sameTypeAs x y
+sameTypeAs x (Node (_, Output) [y]) = sameTypeAs x y
 sameTypeAs (Node (_, Type t) []) (Node (_, Type u) []) = t == u
 sameTypeAs (Node (_, String n) []) (Node (_, String m) []) = m == n
 sameTypeAs (Node (_, ArrayType t n) []) (Node (_, ArrayType u m) []) = m == n && t == u

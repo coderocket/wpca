@@ -12,6 +12,7 @@ import Loc
 %error { parseError }
 %monad { Either String } 
 %token
+	'out'	{ TokOut $$ }
 	'record'{ TokRecord $$ }
 	'proc'	{ TokProc $$ }
 	'theory'{ TokTheory $$ }
@@ -24,6 +25,7 @@ import Loc
 	int	{ TokInt $$ }
 	name	{ TokName $$ }
 	'in'	{ TokIn $$ }
+	'§'	{ TokUnion $$ }
 	'+'	{ TokPlus $$ }
 	'*'	{ TokStar $$ }
 	'/'	{ TokSlash $$ }
@@ -74,7 +76,7 @@ import Loc
 %nonassoc '!'
 %nonassoc '=' '!=' '>=' '<=' '>' '<' 
 %nonassoc '..' SUM
-%left '+' '-' 
+%left '+' '-' '§'
 %left '*' '/' 'mod' 'div'
 %left '<->'
 %left '.'
@@ -101,10 +103,15 @@ Locals : LocalsList { Node (fst (rootLabel (head $1)), Locals) $1 }
 LocalsList : Declaration { [$1] } 
 	| LocalsList ';' Declaration { $3:$1 }
 
-Declaration : Names ':' Expr { Node ($2, Declaration) [Node ($2, List) (reverse $1), $3] }
+Declaration : Names ':' PassStyle Expr { Node ($2, Declaration) [Node ($2, List) (reverse $1), annotateWithPassStyle $3 $4] }
 
 Names : name { [Node (fst $1, String (snd $1)) [] ] }
 	| Names ',' name { (Node (fst $3, String (snd $3)) []):$1 }
+
+PassStyle : 'in' { PassIn }
+	| 'out' { PassOut }
+	| 'in' 'out' { PassInOut }
+	| { PassIn }
 
 Seq : Stmt { $1 } 
 	| Seq ';' Stmt { Node ($2,Seq) [$1,$3] }
@@ -169,6 +176,7 @@ Relat :  Term '>' Term { Node ($2, Greater) [$1,$3] }
 	| Term { $1 }
 
 Term: '-' Term { Node ($1, Neg) [$2] }
+	| Term '§' Term { Node ($2, Union) [$1,$3] }
 	| Term '+' Term { Node ($2, Plus) [$1,$3] }
 	| Term '-' Term { Node ($2, Minus) [$1,$3] }
 	| Term '*' Term { Node ($2, Times) [$1,$3] }
@@ -213,6 +221,13 @@ makeAssign (names,exprs) =
 getName :: Kind -> String
 getName (Type s) = s
 getName (String s) = s
+
+annotateWithPassStyle :: PassStyle -> AST -> AST
+annotateWithPassStyle PassIn n = n
+annotateWithPassStyle PassOut n = Node (p, Output) [n]
+  where p = fst (rootLabel n)
+annotateWithPassStyle PassInOut n = Node (p, Output) [n]
+  where p = fst (rootLabel n)
 
 failWithLoc :: Loc -> String -> Either String a
 failWithLoc (line, col) err = Left $ err ++ " at " ++ (show line) ++ " line, " ++ (show col) ++ " column\n"

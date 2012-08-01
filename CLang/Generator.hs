@@ -33,7 +33,7 @@ generateSource env program =
   do cs <- lookupM "c.sourcefile" env
      hs <- lookupM "c.headerfile" env
      putStrLn ("Writing c source file to " ++ (head cs))
-     writeFile (head cs) (prepareSource (head cs) program)
+     writeFile (head cs) (prepareSource (head hs) program)
 
 prepareHeader :: AST -> String
 prepareHeader (Node (_,Program) [Node (_,List) records, Node (_,List) procs, theory]) =
@@ -46,12 +46,20 @@ prepareStructs = foldr (++) "" . map prepareStruct
 
 prepareStruct :: AST -> String
 prepareStruct (Node (_,Record name) fields) = header ++ (prepareFields (declsToList fields)) ++ footer
-  where header = "typedef struct _" ++ name ++ " {\n"
-        footer = "} " ++ name ++ ";\n"
+  where header = "struct " ++ name ++ " {\n"
+        footer = "};\n"
 
 prepareFields = foldr (++) "" . map prepareField
 prepareField :: (String,AST) -> String
-prepareField (name,tp) = (showCode tp) ++ " " ++ name ++ ";"
+prepareField (name,tp) = (showType tp) ++ " " ++ name ++ ";"
+
+showType :: AST -> String
+showType = foldRose f 
+  where f (_,Type "nat") [] = "unsigned"
+        f (_,Type n) [] = n
+        f (_,ArrayType _ t) [] = t ++ "*"
+        f (_,String n) [] = "struct " ++ n ++ "*" 
+        f (_,x) xs = error ("C does not support the type " ++ show x)
 
 preparePrototypes :: [AST] -> String
 preparePrototypes = foldr (++) "" . map (appendSemi . preparePrototype)
@@ -67,7 +75,7 @@ prepareParams = foldr sepWithComma "" . map prepareParam . declsToList
         sepWithComma s rest = s ++ ", " ++ rest
 
 prepareParam :: (String, AST) -> String
-prepareParam (name,typ) = (showCode typ) ++ " " ++ name
+prepareParam (name,typ) = (showType typ) ++ " " ++ name
 
 -- TODO: add the pre and post conditions as documentation above the prototype
  
@@ -103,12 +111,20 @@ simple if statements
 prepareBody :: AST -> String
 prepareBody = showCode . annotate . normalize 
 
-normalize :: AST -> (AST,AST)
+normalize :: AST -> (Env,AST)
 normalize (Node (_,Proc name) [Node (_,Locals) params,pre,body,post]) = 
-  transform (declsToList params) body
+  (env, locals `wseq` normalized)
+  where env = declsToList params
+        (locals,normalized) = transform env body
 
-annotate :: (AST, AST) -> AST
-annotate (locals,normalized) = locals `wseq` normalized
+annotate :: (Env, AST) -> AST
+annotate (env,body) = foldRose f body
+  where f (pos, String n) [] = 
+          case (lookup n env) of
+            (Just (Node (_,Output) [t])) -> Node (pos, OutputVar) [Node(pos,String n)[]]
+            (Just _) -> Node (pos, String n) []
+            Nothing -> Node (pos, String n) []
+        f k ns = Node k ns
 
 showCode :: AST -> String
 
@@ -122,6 +138,8 @@ showCode = foldRose f
         f (_,Join) xs = (showJoin xs)
         f (_,ArrayJoin) xs = (showArrayJoin xs)
         f (_,String n) [] = n 
+	f (_,Output) [x] = x ++ "*"
+        f (_,OutputVar) [x] = "*" ++ x 
         f (_,Int x) [] = (show x)
         f (_,Neg) [x] = "-" ++ x
         f (_,Plus) [x,y] = "(" ++ x ++ "+" ++ y ++ ")"
@@ -315,11 +333,16 @@ tassign env (Node (pos,Assign) [Node (_,List) (x:y:ns), Node (_,List) es]) unuse
  (tnode, newUnused, zip used types)
  where used = take (2 + (length ns)) unused
        newUnused = drop (2 + (length ns)) unused
-       types = [ typeof env e | e <- es ]
+       types = [ removeOutput (typeof env e) | e <- es ]
        tnode = (assignUsed (zip used es)) `wseq` (assignLValues (zip (x:y:ns) used))
 
 tassign env (Node h ns) unused = (Node h tnodes, newUnused, newUsed)
   where (tnodes, newUnused, newUsed) = tassignNodes env ns unused
+
+removeOutput :: AST -> AST
+removeOutput = foldRose f
+  where f (pos, Output) [x] = x
+        f kind ns = Node kind ns
 
 tassignNodes :: Env -> [AST] -> [String] -> ([AST], [String], Env)
 

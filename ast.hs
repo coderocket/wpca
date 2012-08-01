@@ -6,7 +6,10 @@ type Env = [(String,AST)]
 
 type AST = Tree (Loc,Kind)
 
-data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assert | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | ArrayJoin | Greater | Less | List | Not | Break | ArrayType String String | Range | Quantifier Quantifier | StateVar String | ConstVar String | Pair | Union | Update | Closure | SomeSet | Product | In | Proc String | Record String | Program
+data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assert | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | ArrayJoin | Greater | Less | List | Not | Break | ArrayType String String | Range | Quantifier Quantifier | StateVar String | ConstVar String | Pair | Union | Update | Closure | SomeSet | Product | In | Proc String | Record String | Program | Output | OutputVar
+  deriving (Eq,Show)
+
+data PassStyle = PassIn | PassOut | PassInOut
   deriving (Eq,Show)
 
 data Quantifier = Sum | All | No | Some
@@ -23,6 +26,10 @@ declsToList ds = foldr (++) [] (map f ds)
 close :: AST -> AST
 
 close x = Node (fst (rootLabel x), Closure) [x]
+
+product :: AST -> AST -> AST 
+
+product x y = Node (fst (rootLabel x), Product) [x,y]
 
 union :: AST -> AST -> AST
 

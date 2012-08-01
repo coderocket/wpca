@@ -12,6 +12,7 @@ tokens :-
 
   $white+				;
   "--".*				;
+  "§"					{ \p s -> TokUnion (loc p) }
   ">"                                   { \p s -> TokGreater (loc p) }
   ">="                                   { \p s -> TokGeq (loc p) }
   "<="                                   { \p s -> TokLeq (loc p) }
@@ -33,13 +34,14 @@ tokens :-
   ")"                                   { \p s -> TokRB (loc p) }
   "{"                                   { \p s -> TokLCurl (loc p) }
   "}"                                   { \p s -> TokRCurl (loc p) }
-  "in"                                   { \p s -> TokIn (loc p) }
   "!"                                   { \p s -> TokNot (loc p) }
   "+"                                   { \p s -> TokPlus (loc p) }
   "-"                                   { \p s -> TokDash (loc p) }
   "*"                                   { \p s -> TokStar (loc p) }
   "/"                                   { \p s -> TokSlash (loc p) }
   "|"                                   { \p s -> TokBar (loc p) }
+  "in"					{ \p s -> TokIn (loc p) }
+  "out"					{ \p s -> TokOut (loc p) }
   "true"                                { \p s -> TokTrue (loc p) }
   "false"                               { \p s -> TokFalse (loc p) }
   "int"                                 { \p s -> TokIntType (loc p) }
@@ -74,6 +76,8 @@ loc (AlexPn _ line col) = (line,col)
 -- The token type:
 
 data Token =
+	TokUnion Loc |
+	TokOut Loc |
 	TokRecord Loc |
 	TokProc Loc |
 	TokTheory Loc |
@@ -130,6 +134,8 @@ data Token =
 	TokKeep Loc 
 	deriving (Eq,Show)
 
+pos (TokUnion p) = p
+pos (TokOut p) = p
 pos (TokRecord p) = p
 pos (TokProc p) = p
 pos (TokTheory p) = p

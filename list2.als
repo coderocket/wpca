@@ -1,8 +1,7 @@
 module list
 
 open partialOrder[univ] 
-
-one sig NULL {}
+open misc
 
 sig Node {}
 
