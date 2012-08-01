@@ -1,6 +1,4 @@
-  N : nat
-; a : array of N int
-; n,k : int
+proc Isort[N : nat; a : array of N int; n,k : int]
  { a = A }
 ; n := 1
 ; keeping

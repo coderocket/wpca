@@ -1,6 +1,4 @@
-  N : nat
-; a : array of N int
-; k,n : nat
+proc Unique[N : nat ; a : array of N int ; k,n : nat]
  { a = A and all i,j : 0..N-1 | i <= j => a[i] <= a[j] }
 ; k,n := 1,1
 ; keeping

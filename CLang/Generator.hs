@@ -6,33 +6,114 @@ import LookupMonad
 import Typechecker
 import Loc
 
-showCCode :: [(String,[String])] -> AST -> IO ()
+{-
 
-showCCode env ast =
+A WPCA program consists of a set of record definitions followed by 
+a set of procedure definitions. To generate a C program we have to
+create two files: a header file and a source file. The header file
+will contain all the structs that correspond to the records. and the
+prototypes of all the functions that correspond to the procedures. The 
+source file will include the header file and define all the functions.
+
+-}
+
+type ConfigEnv = [(String,[String])]
+
+generate :: ConfigEnv -> AST -> IO ()
+generate env program = 
+  do generateHeader env program 
+     generateSource env program
+
+generateHeader env program = 
+  do hs <- lookupM "c.headerfile" env
+     putStrLn ("Writing c header file to " ++ (head hs))
+     writeFile (head hs) (prepareHeader program)
+
+generateSource env program =
   do cs <- lookupM "c.sourcefile" env
      hs <- lookupM "c.headerfile" env
-     fn <- lookupM "c.function" env
-     putStrLn ("Writing c header file to " ++ (head hs))
-     writeFile (head hs) (showCHeader (head fn) ast)
      putStrLn ("Writing c source file to " ++ (head cs))
-     writeFile (head cs) (showCSource (head fn) ast)
+     writeFile (head cs) (prepareSource (head cs) program)
 
-showCHeader name (Node (_,Spec) (stateVars:_)) =
-	"typedef struct _state {\n" ++ (showLocals stateVars) ++ "} state;\n" ++
-	"void " ++ name ++ "(state*);\n"
+prepareHeader :: AST -> String
+prepareHeader (Node (_,Program) [Node (_,List) records, Node (_,List) procs, theory]) =
+  header ++ prepareStructs records ++ preparePrototypes procs ++ footer
+  where header = ""  
+        footer = ""
 
-showCSource name (Node (_,Spec) [stateVars, pre, program, post]) = 
-	"#include \"" ++ name ++ ".h\"\n\n" ++
-	"void " ++ name ++ "(state* s)\n{\n" 
-	++ (showLocals locals) ++ "\n"
-	++ (showC env tprog) ++ "\n}\n"
-  where (locals, tprog) = transform env program
-        env = declsToList (subForest stateVars)
+prepareStructs :: [AST] -> String
+prepareStructs = foldr (++) "" . map prepareStruct
 
-showC :: Env -> AST -> String
+prepareStruct :: AST -> String
+prepareStruct (Node (_,Record name) fields) = header ++ (prepareFields (declsToList fields)) ++ footer
+  where header = "typedef struct _" ++ name ++ " {\n"
+        footer = "} " ++ name ++ ";\n"
 
-showC env = foldRose f 
-  where f (_,Seq) [x, y] = x ++ "\n" ++ y 
+prepareFields = foldr (++) "" . map prepareField
+prepareField :: (String,AST) -> String
+prepareField (name,tp) = (showCode tp) ++ " " ++ name ++ ";"
+
+preparePrototypes :: [AST] -> String
+preparePrototypes = foldr (++) "" . map (appendSemi . preparePrototype)
+  where appendSemi s = s ++ ";\n"
+
+preparePrototype :: AST -> String
+preparePrototype (Node (_,Proc name) [Node (_,Locals) params,pre,body,post]) = 
+  "void " ++ name ++ "(" ++ prepareParams params ++ ")"
+
+prepareParams :: [AST] -> String
+prepareParams = foldr sepWithComma "" . map prepareParam . declsToList
+  where sepWithComma s "" = s
+        sepWithComma s rest = s ++ ", " ++ rest
+
+prepareParam :: (String, AST) -> String
+prepareParam (name,typ) = (showCode typ) ++ " " ++ name
+
+-- TODO: add the pre and post conditions as documentation above the prototype
+ 
+prepareSource :: String -> AST -> String
+prepareSource hfile (Node (_,Program) [Node (_,List) records, Node (_,List) procs, theory]) = header ++ prepareFunctions procs ++ footer
+  where header = "#include \"" ++ hfile ++ "\"\n"
+        footer = ""
+
+prepareFunctions :: [AST] -> String
+prepareFunctions = foldr (++) "" . map prepareFunction
+
+prepareFunction :: AST -> String
+prepareFunction proc =
+  preparePrototype proc ++ " {\n" ++ prepareBody proc ++ "}\n"
+
+{-
+To prepare the body of a procedure we first normalize(see below) it 
+and then annotate its variables so that we will know their type when
+without having to lookup an environment. Finally we convert the 
+annotated program into its C equivalent program.
+
+By normalizing a program we mean that we transform it into a form
+that resembles traditional programming language. This includes:
+
+1. Replace multiple assignment statements with a sequence of
+ simple assignment statements
+2. Convert do .. od loops into a combination of while and 
+simple if statements 
+3. Convert if .. fi statements into simple if/else statements.  
+
+-}
+
+prepareBody :: AST -> String
+prepareBody = showCode . annotate . normalize 
+
+normalize :: AST -> (AST,AST)
+normalize (Node (_,Proc name) [Node (_,Locals) params,pre,body,post]) = 
+  transform (declsToList params) body
+
+annotate :: (AST, AST) -> AST
+annotate (locals,normalized) = locals `wseq` normalized
+
+showCode :: AST -> String
+
+showCode = foldRose f 
+  where f (_,Seq) xs = foldr (\ x rest -> x ++ "\n" ++ rest) "" xs 
         f (_,Skip) [] = ";"
         f (_,Break) [] = "break;"
         f (_,Type "nat") [] = "unsigned"
@@ -40,12 +121,7 @@ showC env = foldRose f
         f (_,ArrayType _ t) [] = t ++ "*"
         f (_,Join) xs = (showJoin xs)
         f (_,ArrayJoin) xs = (showArrayJoin xs)
-        f (_,String n) [] = case lookup n env of 
-          Just (Node (_,Type _) []) -> "s->"++ n
-          Just (Node (_,String _) []) -> "s->"++ n
-          Just (Node (_,ArrayType _ _) []) -> "s->"++ n
-          Just (Node (_,Product) _) -> n  
-          Nothing -> n
+        f (_,String n) [] = n 
         f (_,Int x) [] = (show x)
         f (_,Neg) [x] = "-" ++ x
         f (_,Plus) [x,y] = "(" ++ x ++ "+" ++ y ++ ")"
@@ -68,9 +144,11 @@ showC env = foldRose f
         f (_,Not) [x] = "!(" ++ x ++ ")"
         f (_,Assign) [n,e] = n ++ " = " ++ e ++ ";"
         f (_,Assert) [_] = ";"
-        f (_,List) [x] = x 
+        f (_,List) xs = foldr (++) "" xs
         f (_,Cond) [g,x,y] = "if (" ++ g ++ ") {\n" ++ x ++ "\n} else {\n" ++ y ++"}\n"
         f (_,Loop) [gs] = "while(1) {\n" ++ gs ++ "\n}\n"
+        f (_,Locals) xs = foldr (++) "" xs
+	f (_,Declaration) [n, t] = t ++ " " ++ n ++ ";\n"
         f (_,x) xs = error ("C does not support " ++ show x)
 
 -- [x,y,z] => x->y->z
@@ -87,11 +165,16 @@ showArrayJoin = (foldr (++) "") . reverse . (foldr f [])
   where f x [] = [x]
         f x xs = ("[" ++ x ++ "]") :  xs  
 
+showLocalsX = foldr (++) "" . map showLocalX
+
+showLocalX (Node (_,Declaration) [(Node (_,List) ds), t]) =
+ foldr (++) "" [ showCode t ++ " " ++ name ++ ";\n" | Node (_,String name) [] <- ds ]
+ 
 showLocals (Node (_,Locals) ds) = foldr f "" (declsToList ds) 
   where f (n,t) ds = case t of 
                         Node (_,Product) _ -> ds 
 			Node (_,String s) [] -> s ++ " *" ++ n ++ ";\n" ++ ds
-                        otherwise -> (showC [] t) ++ " " ++ n ++ ";\n" ++ ds
+                        otherwise -> (showCode t) ++ " " ++ n ++ ";\n" ++ ds
 
 {-
 
@@ -266,7 +349,7 @@ transform stateVars program = (locals, tprog)
         locals = Node (startLoc, Locals) (listToDecls used) 
 
 listToDecls :: Env -> [AST]
-listToDecls env = [ Node (startLoc, Declaration) [Node (startLoc, List) [string n], t] | (n,t) <- env ]
+listToDecls env = [ Node (startLoc, Declaration) [string n, t] | (n,t) <- env ]
 
 transformGuards :: AST -> AST
 

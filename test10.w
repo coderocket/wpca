@@ -1,4 +1,4 @@
-x : int
+proc Abs[x : int]
   { x = X }
 ; if true -> x := -x 
   [] true -> skip fi

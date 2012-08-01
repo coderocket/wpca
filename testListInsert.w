@@ -1,6 +1,4 @@
-  next : Node <-> Node
-; head, new : Node
-; NULL : Node
+proc Insert[next : Node <-> Node ; head, new : Node ; NULL : Node]
 	{ list[head,next] and head = H and new != NULL and !(new in crange[head,NULL,next]) and next = NEXT and EOL = NULL }
 ; new.next := head 
 ; head := new

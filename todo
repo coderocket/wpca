@@ -31,6 +31,12 @@ no, that won't do because we cannot support such a specification
 in a finite model. there is always the chance that we will run out
 of memory.
 
+- make 'sum' a term
+- prove that wpca is correct:
+  - prove that it calculates correctly the weakest precondition
+  - prove that every well typed program generates a valid C program
+  - prove that every well typed program generates a valid Alloy model
+
 - how to avoid record field names from different records from clashing?
 
 the problem is that in alloy sigs are not name spaces so for example
@@ -85,7 +91,7 @@ Proc : 'proc' name '[' Declarations ']' '{' Expr '}' Stmt '{' Expr '}'
 each procedure is analyzed separately, for each procedure we create
 a separate analysis file. 
 
-We generate the program file based on the wpca file name. for example,
+- generate the program file based on the wpca file name. for example,
 the wpca file stack.w yields the C files stack.h and stack.c.
 
 - better support for records

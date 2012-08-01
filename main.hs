@@ -18,7 +18,7 @@ main =
              s <- readFile (args!!0)
              ast <- parse s
              work cfg ast
-             showCCode cfg ast
+             CLang.Generator.generate cfg ast
 
 versionMsg = "This is wpca, Version 1.0\n"
 

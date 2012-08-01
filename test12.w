@@ -1,4 +1,4 @@
-x, y : int
+proc Gcd[x, y : int]
   { x = X and y = Y and x > 0 and y > 0 }
 ; keeping 
     gcd[x,y] = gcd[X,Y] and x > 0 and y > 0

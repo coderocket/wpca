@@ -9,7 +9,7 @@ if exists("b:current_syntax")
 endif
 
 " WPCA keywords
-syn keyword     wpcaStatement   skip
+syn keyword     wpcaStatement   skip proc record theory
 syn keyword     wpcaConditional	if fi
 syn keyword     wpcaRepeat     	do od keeping
 syn keyword     wpcaType     	int nat array of 
