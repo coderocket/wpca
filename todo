@@ -31,6 +31,127 @@ no, that won't do because we cannot support such a specification
 in a finite model. there is always the chance that we will run out
 of memory.
 
+- how to avoid record field names from different records from clashing?
+
+the problem is that in alloy sigs are not name spaces so for example
+the following wpca program:
+
+record A {
+  f : B
+}
+
+record C {
+  f : int
+}
+
+will create an ambigous alloy model because there are two relations
+called f.
+
+  one way to solve this problem is to attach to every relation a prefix 
+with the record in which it was defined. But this will make the 
+counterexamples difficult to read.
+
+this may not be a problem in practice because as long as the relations
+are used in the context of a relational composition the type of the
+objects with which they are composed will resolve the ambiguity.
+
+- how to protect Alloy generated names from clashing with user defined
+names? for example what if a user decides to define a variable called
+'State'? 
+
+  one way is to reduce the chances of this happening by giving the alloy
+variables awkward names. For example instead of using 'State' we may 
+use '__wpca__State'. We may even forbid wpca variable names not to begin
+with '__wpca__'. 
+
+ a similar way is to use in alloy a character that is forbidden in wpca
+names, for example to start every internal variable with W'.
+
+- the grammar of wpca with support for records, procedures and
+explicit inclusion of alloy definitions is:
+
+Program : Records Procs Theory
+
+Records : Records Record | Record
+
+Procs : Procs Proc | Proc
+
+Theory : 'theory' name
+
+Record : 'record' name '{' Declarations '}'
+
+Proc : 'proc' name '[' Declarations ']' '{' Expr '}' Stmt '{' Expr '}'
+	
+each procedure is analyzed separately, for each procedure we create
+a separate analysis file. 
+
+We generate the program file based on the wpca file name. for example,
+the wpca file stack.w yields the C files stack.h and stack.c.
+
+- better support for records
+
+define records to support fields and the null idiom.
+
+record Node {
+  data : T,
+  next : Node
+}
+
+is translated into the following alloy model:
+
+one sig NULL {}
+
+sig Node {}
+
+sig State {
+  data : Node -> T,
+  next : Node -> (Node + NULL)
+}
+
+in addition, every definition of a variable of type Node in the
+program becomes a definition of a variable of type Node+NULL in the
+model.
+
+in general, whenever we define a variable of type record we must
+add an option for this variable to be set to NULL.
+
+- the alloy modules that define the predicates and functions of a
+wpca program must be specified in the program itself.
+
+one simple way to achieve this is to add a theory keyword at the
+end of the program:
+
+x,y,z : int
+	{ true }
+; if x < y -> z := y [] x >= y -> z := x fi
+	{ z = max[x,y] }
+
+theory maxmin
+
+where maxmin.als is an alloy file that defines the function max
+
+- how similar should wpca be to a programming language?
+
+- what is the best way to combine wpca with alloy?
+
+  - one way (as implemented in DynAlloy) is to embed wpca inside the
+  alloy language. this makes it easy to use all of the alloy constructs
+  (including scope definitions, predicates, functions, signature
+  definitions etc'). we can use the keyword 'proc' to define wpca
+  procedures:
+
+proc swap[x:T,y:T] 
+	{ x = X and y = Y }
+{ x,y := y,x }
+	{ x = Y and y = X }
+
+the problem is that using this approach will make it more difficult to
+generate code, in particular to generate data structure definitions. the
+central issue is that the constructs that define data structures are
+limited to ensure that we can generate from them efficient code. for
+example we cannot translate any sig into a struct because the sig may
+contain arbitrary relations.
+ 
 - support heap allocated objects. 
 
 This requires a wp model of the heap, a model of records and syntax for
@@ -390,6 +511,54 @@ we need to display the following information:
 - what are the values that cause the program to follow this path? 
 
 Done
+
+- support record fields
+
+To support an algorithm over dynamic data structures we add a new
+kind of variable: a relation variable. For example:
+
+next : Node <-> Node
+
+defines next to be a variable that holds relation between Node
+objects. Note: we cannot use the Alloy '->' symbol because it is
+already taken by the guarded command langauge.
+
+In a traditional programming language these variables are global.
+Therefore when we generate code we omit them from the list of state
+variables. For example, consider the following program:
+
+  head : Node
+; next : Node <-> Node
+; head.next = NULL
+
+The C code that corresponds to this program is:
+
+typedef struct _state {
+  Node* head;
+} state;
+
+algo(state* s) {
+  s->head->next = NULL
+}
+
+To do that we have to:
+
+1. Support Cartesian product expressions
+  - Identify '<->' as a token
+  - Allow '<->' in Expr and define its associativity and precedence
+  - Add '<->' to the AST
+  - Print '<->' in alloy
+  - Display counter-examples that involve relations that are not arrays
+  - In C Ignore variables whose type is a Cartesian product 
+
+2. Distinguish between array join and relational join
+  - Create a token for array 'join'
+  - In Alloy convert array join to relational join
+  - In C display array join using array syntax and relational join as
+    access to a struct field 
+
+3. In the C generator print array join as before and
+relational join using the arrow operator.
 
 - support record fields
 

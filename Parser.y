@@ -12,6 +12,9 @@ import Loc
 %error { parseError }
 %monad { Either String } 
 %token
+	'record'{ TokRecord $$ }
+	'proc'	{ TokProc $$ }
+	'theory'{ TokTheory $$ }
 	'true'	{ TokTrue $$ }
 	'false'	{ TokFalse $$ }
 	'int'	{ TokIntType $$ }
@@ -76,8 +79,23 @@ import Loc
 %left '<->'
 %left '.'
 %%
-
 Spec : Locals Pre ';' Seq Post { Node ($3,Spec) [$1, $2, $4, $5] }
+
+Program : Records Procs Theory { ($1,$2,$3) }
+	| Procs Theory { ([],$1,$2) }
+	| Procs { ([],$1,"") }
+
+Records : Records Record { $2:$1 }
+	| Record { [$1] }
+
+Procs : Procs Proc { $2:$1 } 
+	| Proc { [$1] }
+
+Theory : 'theory' name { snd $2 }
+
+Record : 'record' name '{' LocalsList '}' { Node ($1, Record) $4 }
+
+Proc : 'proc' name '[' Locals ']' Pre ';' Seq Post { Node ($1, Proc) [ Node(fst $2, String (snd $2)) [],$4,$6,$8,$9] }
 
 Locals : LocalsList { Node (fst (rootLabel (head $1)), Locals) $1 }
 
