@@ -6,7 +6,7 @@ type Env = [(String,AST)]
 
 type AST = Tree (Loc,Kind)
 
-data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assert | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | ArrayJoin | Greater | Less | List | Not | Break | ArrayType String String | Range | Quantifier Quantifier | StateVar String | ConstVar String | Pair | Union | Update | Closure | SomeSet | Product | In | Proc String | Record String | Program | Output | OutputVar
+data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assert | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | ArrayJoin | Greater | Less | List | Not | Break | ArrayType String String | Range | Quantifier Quantifier | StateVar String | ConstVar String | Pair | Union | Update | Closure | SomeSet | Product | In | Proc String | Record String | Program | Output | OutputVar | RecordType String
   deriving (Eq,Show)
 
 data PassStyle = PassIn | PassOut | PassInOut

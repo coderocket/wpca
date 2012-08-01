@@ -80,16 +80,28 @@ prepareParam (name,typ) = (showType typ) ++ " " ++ name
 -- TODO: add the pre and post conditions as documentation above the prototype
  
 prepareSource :: String -> AST -> String
-prepareSource hfile (Node (_,Program) [Node (_,List) records, Node (_,List) procs, theory]) = header ++ prepareFunctions procs ++ footer
-  where header = "#include \"" ++ hfile ++ "\"\n"
+prepareSource hfile (Node (_,Program) [Node (_,List) records, Node (_,List) procs, theory]) = header ++ prepareFunctions fieldTypes procs ++ footer
+  where header = "#include <stddef.h>\n#include \"" ++ hfile ++ "\"\n" 
         footer = ""
+	fieldTypes = getRecordVars records
 
-prepareFunctions :: [AST] -> String
-prepareFunctions = foldr (++) "" . map prepareFunction
+getRecordVars :: [AST] -> Env
+getRecordVars = foldr (++) [] . map getFieldVars
 
-prepareFunction :: AST -> String
-prepareFunction proc =
-  preparePrototype proc ++ " {\n" ++ prepareBody proc ++ "}\n"
+getFieldVars :: AST -> Env
+getFieldVars (Node (_,Record name) fields) = f fields
+  where f = map (getFieldVar name) . declsToList
+
+getFieldVar :: String -> (String,AST) -> (String,AST)
+getFieldVar left (relName, right) =
+  (relName, Node (startLoc,Product) [ Node (startLoc,String left) [], right])
+
+prepareFunctions :: Env -> [AST] -> String
+prepareFunctions fieldTypes = foldr (++) "" . map (prepareFunction fieldTypes)
+
+prepareFunction :: Env -> AST -> String
+prepareFunction fieldTypes proc =
+  preparePrototype proc ++ " {\n" ++ prepareBody fieldTypes proc ++ "}\n"
 
 {-
 To prepare the body of a procedure we first normalize(see below) it 
@@ -108,13 +120,13 @@ simple if statements
 
 -}
 
-prepareBody :: AST -> String
-prepareBody = showCode . annotate . normalize 
+prepareBody :: Env -> AST -> String
+prepareBody fieldTypes = showCode . annotate . (normalize fieldTypes)
 
-normalize :: AST -> (Env,AST)
-normalize (Node (_,Proc name) [Node (_,Locals) params,pre,body,post]) = 
+normalize :: Env -> AST -> (Env,AST)
+normalize fieldTypes (Node (_,Proc name) [Node (_,Locals) params,pre,body,post]) = 
   (env, locals `wseq` normalized)
-  where env = declsToList params
+  where env = fieldTypes ++ (declsToList params)
         (locals,normalized) = transform env body
 
 annotate :: (Env, AST) -> AST
@@ -138,6 +150,7 @@ showCode = foldRose f
         f (_,Join) xs = (showJoin xs)
         f (_,ArrayJoin) xs = (showArrayJoin xs)
         f (_,String n) [] = n 
+        f (_,RecordType n) [] = "struct " ++ n  ++ "* "
 	f (_,Output) [x] = x ++ "*"
         f (_,OutputVar) [x] = "*" ++ x 
         f (_,Int x) [] = (show x)
@@ -182,17 +195,6 @@ showJoin = foldr f ""
 showArrayJoin = (foldr (++) "") . reverse . (foldr f [])
   where f x [] = [x]
         f x xs = ("[" ++ x ++ "]") :  xs  
-
-showLocalsX = foldr (++) "" . map showLocalX
-
-showLocalX (Node (_,Declaration) [(Node (_,List) ds), t]) =
- foldr (++) "" [ showCode t ++ " " ++ name ++ ";\n" | Node (_,String name) [] <- ds ]
- 
-showLocals (Node (_,Locals) ds) = foldr f "" (declsToList ds) 
-  where f (n,t) ds = case t of 
-                        Node (_,Product) _ -> ds 
-			Node (_,String s) [] -> s ++ " *" ++ n ++ ";\n" ++ ds
-                        otherwise -> (showCode t) ++ " " ++ n ++ ";\n" ++ ds
 
 {-
 
@@ -333,7 +335,7 @@ tassign env (Node (pos,Assign) [Node (_,List) (x:y:ns), Node (_,List) es]) unuse
  (tnode, newUnused, zip used types)
  where used = take (2 + (length ns)) unused
        newUnused = drop (2 + (length ns)) unused
-       types = [ removeOutput (typeof env e) | e <- es ]
+       types = [ removeOutput (typeof env e) | e <- (x:y:ns) ]
        tnode = (assignUsed (zip used es)) `wseq` (assignLValues (zip (x:y:ns) used))
 
 tassign env (Node h ns) unused = (Node h tnodes, newUnused, newUsed)
@@ -372,7 +374,12 @@ transform stateVars program = (locals, tprog)
         locals = Node (startLoc, Locals) (listToDecls used) 
 
 listToDecls :: Env -> [AST]
-listToDecls env = [ Node (startLoc, Declaration) [string n, t] | (n,t) <- env ]
+listToDecls env = [ Node (startLoc, Declaration) [string n, explicateRecordTypes t] | (n,t) <- env ]
+
+explicateRecordTypes :: AST -> AST 
+explicateRecordTypes = foldRose f where
+  f (_,String n) [] = Node (startLoc, RecordType n) []
+  f kind xs = Node kind xs 
 
 transformGuards :: AST -> AST
 

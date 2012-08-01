@@ -128,20 +128,6 @@ getFieldVar :: String -> (String,AST) -> (String,AST)
 getFieldVar left (relName, right) = 
   (relName, Node (startLoc,Product) [ Node (startLoc,String left) [], right])
 
-{- 
-When we translate a variable definition that binds a variable to a
-record type we must add the option that the variable may be NULL. 
--}
-
-addNULLs :: Env -> Env
-addNULLs env = map f env
-  where f (name, Node (_,String t)[]) = (name, addNULL (string t)) 
-        f (name, Node (_,Product) [x,y]) = (name, (addNULL x) `AST.product` (addNULL y))
-        f (name, t) = (name, t)
-
-addNULL :: AST -> AST
-addNULL t = t `AST.union` (string "NULL")
-
 cvars :: Env -> AST -> Env
 
 -- To find the type of a constant (a.k.a model) variable
