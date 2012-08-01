@@ -12,6 +12,7 @@ tokens :-
 
   $white+				;
   "--".*				;
+  "~"					{ \p s -> TokRev (loc p) }
   "§"					{ \p s -> TokUnion (loc p) }
   ">"                                   { \p s -> TokGreater (loc p) }
   ">="                                   { \p s -> TokGeq (loc p) }
@@ -76,6 +77,7 @@ loc (AlexPn _ line col) = (line,col)
 -- The token type:
 
 data Token =
+	TokRev Loc |
 	TokUnion Loc |
 	TokOut Loc |
 	TokRecord Loc |
@@ -134,6 +136,7 @@ data Token =
 	TokKeep Loc 
 	deriving (Eq,Show)
 
+pos (TokRev p) = p
 pos (TokUnion p) = p
 pos (TokOut p) = p
 pos (TokRecord p) = p

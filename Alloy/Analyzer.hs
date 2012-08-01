@@ -211,6 +211,7 @@ showA = foldRose f
         f (_, Product) xs = (showRel xs)
         f (_, Not) [x] = "!(" ++ x ++ ")"
         f (_, Neg) [x] = x ++ ".negate"
+        f (_, Reverse) [x] = "~(" ++ x ++ ")"
         f (_, Int x) [] = show x
         f (_, AST.True) [] = "true"
         f (_, AST.False) [] = "false"

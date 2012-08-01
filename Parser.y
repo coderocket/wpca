@@ -25,6 +25,7 @@ import Loc
 	int	{ TokInt $$ }
 	name	{ TokName $$ }
 	'in'	{ TokIn $$ }
+	'~'	{ TokRev $$ }
 	'§'	{ TokUnion $$ }
 	'+'	{ TokPlus $$ }
 	'*'	{ TokStar $$ }
@@ -77,7 +78,7 @@ import Loc
 %nonassoc '=' '!=' '>=' '<=' '>' '<' 
 %nonassoc '..' SUM
 %left '+' '-' '§'
-%left '*' '/' 'mod' 'div'
+%left '*' '/' 'mod' 'div' '~'
 %left '<->'
 %left '.'
 %%
@@ -176,6 +177,7 @@ Relat :  Term '>' Term { Node ($2, Greater) [$1,$3] }
 	| Term { $1 }
 
 Term: '-' Term { Node ($1, Neg) [$2] }
+	| '~' Term { Node ($1, Reverse) [$2] }
 	| Term '§' Term { Node ($2, Union) [$1,$3] }
 	| Term '+' Term { Node ($2, Plus) [$1,$3] }
 	| Term '-' Term { Node ($2, Minus) [$1,$3] }
