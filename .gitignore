@@ -6,3 +6,9 @@
 *.pdf
 *.swp
 .DS_Store
+*.analysis.*
+Parser.hs
+Lexer.hs
+Parser.info
+wpca.cfg
+
