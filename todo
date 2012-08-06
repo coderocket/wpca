@@ -1,12 +1,15 @@
-- improve the type system:
 
-  - use a separate node for each basic type (int, nat?)
-  - use a separate node for record types
-  - find all the functions that operate on types and modify
-them to support the new types. 
+- Support local variables at the beginning of a procedure.
 
-that won't work because we cannot distinguish variables from user defined
-type names (both are identifiers).
+  - in the Alloy analyzer the list of local variables is appended to
+    the list of procedure state variables
+  - in the C generator the list of local variables is appended to the
+    temporary variables that we build when we simplify the concurrent
+    assignment statement into a sequence of simple assignment statements.
+
+however, adding a list of locals at the beginning of the body creates
+a shift/reduce conflict because the ';' that terminates the list is
+confused with the ';' that separates two definitions.
 
 - A simple model of dynamically allocated objects?
 

@@ -26,12 +26,12 @@ definitions.
 -}
 
 work :: Config -> AST -> IO ()
-work cfg (Node (_,Program) [Node (_,List) records, Node (_,List) procs, Node (_,String theory) []]) = loop procs
+work cfg (Node (_,Program) [Node (_,List) records, Node (_,List) procs, Node (_,List) theory]) = loop procs
   where loop [] = return ()
         loop (p:ps) = do analyzeProc cfg theory records p 
                          loop ps
 
-analyzeProc :: Config -> String -> [AST]-> AST -> IO ()
+analyzeProc :: Config -> [AST] -> [AST]-> AST -> IO ()
 analyzeProc cfg theory records (Node (p,Proc name) [params,pre,body,post]) = 
   do [analysisFile] <- lookupM "alloy.analysisfile" cfg 
      analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) theory records (Node (p, Spec) [params,pre,body,post])
@@ -44,7 +44,7 @@ we generate a report based on the results of the analysis.
 
 -}
 
-analyzeSpec :: Config -> String -> [AST] -> AST -> IO ()
+analyzeSpec :: Config -> [AST] -> [AST] -> AST -> IO ()
 
 analyzeSpec cfg theory records code = 
   do (obligs,types) <- generate cfg theory records code
@@ -65,7 +65,7 @@ the report.
 
 -}
 
-generate :: Config -> String -> [AST] -> AST -> IO ([(String,Oblig)], Env)
+generate :: Config -> [AST] -> [AST] -> AST -> IO ([(String,Oblig)], Env)
 
 generate cfg theory records code = 
   do putStrLn "Generating model..." 
@@ -76,7 +76,7 @@ generate cfg theory records code =
      [analysisFile] <- lookupM "alloy.analysisfile" cfg
      libraries <- lookupM "alloy.analysislibraries" cfg
      putStrLn ("... There are " ++ (show (length obligs)) ++ " proof obligations. Writing analysis file to " ++ analysisFile)
-     writeFile analysisFile (showModel (libraries++[theory]) stateVars constants obligs)
+     writeFile analysisFile (showModel (libraries++[s | Node (_,String s) [] <- theory]) stateVars constants obligs)
      return (obligs, stateVars ++ constants)
 
 -- Alloy does not care if the join is due to an array or due to a relation
@@ -186,6 +186,7 @@ showType = foldRose f
         f (_, String n) [] = n ++ " + NULL"
         f (_, Const) [x] = x
         f (_, Product) xs = (showRel xs)
+	f (_, Output) [x] = x
 	f other ns = error ("Internal error: Don't know how to show the type " ++ (show other)) 
 
 showA :: AST -> String

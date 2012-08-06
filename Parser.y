@@ -83,26 +83,31 @@ import Loc
 %left '.'
 %%
 
-Program : Records Procs Theory { Node (startLoc,Program) [lta $1,lta $2,$3] }
-	| Procs Theory { Node (startLoc,Program) [lta [],lta $1,$2] }
-	| Procs { Node (startLoc, Program) [lta [],lta $1, string ""] }
+Program : Records Procs Theory { Node (startLoc,Program) [lta $1,lta $2, lta $3] }
 
-Records : Records Record { $2:$1 }
+Records : { [] }
+	| NonEmptyRecords { $1 }
+
+NonEmptyRecords : NonEmptyRecords Record { $2:$1 }
 	| Record { [$1] }
 
 Procs : Procs Proc { $2:$1 } 
 	| Proc { [$1] }
 
-Theory : 'theory' name { Node ($1,String (snd $2)) [] }
+Theory :  { [] }
+	| 'theory' Names { $2 }
 
 Record : 'record' name '{' LocalsList '}' { Node ($1, Record (snd $2)) $4 }
 
-Proc : 'proc' name '[' Locals ']' Pre ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$6,$8,$9] }
+Proc : 'proc' name '[' Locals ']' Locals Pre ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$7,$9,$10] }
 
 Locals : LocalsList { Node (fst (rootLabel (head $1)), Locals) $1 }
 
-LocalsList : Declaration { [$1] } 
-	| LocalsList ';' Declaration { $3:$1 }
+LocalsList : { [] }
+	| NonEmptyList { $1 }
+
+NonEmptyList : Declaration { [$1] } 
+	| NonEmptyList ';' Declaration { $3:$1 }
 
 Declaration : Names ':' PassStyle Expr { Node ($2, Declaration) [Node ($2, List) (reverse $1), annotateWithPassStyle $3 $4] }
 

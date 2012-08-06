@@ -59,6 +59,7 @@ showType = foldRose f
         f (_,Type n) [] = n
         f (_,ArrayType _ t) [] = t ++ "*"
         f (_,String n) [] = "struct " ++ n ++ "*" 
+	f (_,Output) [x] = x ++ "*"
         f (_,x) xs = error ("C does not support the type " ++ show x)
 
 preparePrototypes :: [AST] -> String
