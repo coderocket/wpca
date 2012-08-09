@@ -99,9 +99,9 @@ Theory :  { [] }
 
 Record : 'record' name '{' LocalsList '}' { Node ($1, Record (snd $2)) $4 }
 
-Proc : 'proc' name '[' Locals ']' Locals Pre ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$7,$9,$10] }
+Proc : 'proc' name '[' Locals ']' Locals Pre ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$6,$7,$9,$10] }
 
-Locals : LocalsList { Node (fst (rootLabel (head $1)), Locals) $1 }
+Locals : LocalsList { Node (fst (rootLabel (head $1)), List) $1 }
 
 LocalsList : { [] }
 	| NonEmptyList { $1 }

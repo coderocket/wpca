@@ -206,7 +206,7 @@ subst bound env (Node n ns) = Node n (map (subst bound env) ns)
 substQuantifier pos kind bound env decls body =
   Node (pos, Quantifier kind) [newDecls, newBody]
   where newBody = subst ((declNames decls)++bound) env body
-        newDecls = Node (pos, Locals) [ Node (p, Declaration) [ns, subst bound env t] | (Node (p, Declaration) [ns, t]) <- (subForest decls) ]
+        newDecls = Node (pos, List) [ Node (p, Declaration) [ns, subst bound env t] | (Node (p, Declaration) [ns, t]) <- (subForest decls) ]
 
 free :: [String] -> AST -> [String]
 

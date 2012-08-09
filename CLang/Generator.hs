@@ -67,7 +67,7 @@ preparePrototypes = foldr (++) "" . map (appendSemi . preparePrototype)
   where appendSemi s = s ++ ";\n"
 
 preparePrototype :: AST -> String
-preparePrototype (Node (_,Proc name) [Node (_,Locals) params,pre,body,post]) = 
+preparePrototype (Node (_,Proc name) [Node (_,List) params, locals, pre,body,post]) = 
   "void " ++ name ++ "(" ++ prepareParams params ++ ")"
 
 prepareParams :: [AST] -> String
@@ -125,10 +125,10 @@ prepareBody :: Env -> AST -> String
 prepareBody fieldTypes = showCode . annotate . (normalize fieldTypes)
 
 normalize :: Env -> AST -> (Env,AST)
-normalize fieldTypes (Node (_,Proc name) [Node (_,Locals) params,pre,body,post]) = 
-  (env, locals `wseq` normalized)
-  where env = fieldTypes ++ (declsToList params)
-        (locals,normalized) = transform env body
+normalize fieldTypes (Node (_,Proc name) [Node (_,List) params, locals, pre,body,post]) = 
+  (env, (separateDecls (subForest locals)) `wseq` tmps `wseq` normalized)
+  where env = fieldTypes ++ (declsToList (subForest locals)) ++ (declsToList params)
+        (tmps,normalized) = transform env body
 
 annotate :: (Env, AST) -> AST
 annotate (env,body) = foldRose f body
@@ -179,15 +179,22 @@ showCode = foldRose f
         f (_,List) xs = foldr (++) "" xs
         f (_,Cond) [g,x,y] = "if (" ++ g ++ ") {\n" ++ x ++ "\n} else {\n" ++ y ++"}\n"
         f (_,Loop) [gs] = "while(1) {\n" ++ gs ++ "\n}\n"
-        f (_,Locals) xs = foldr (++) "" xs
-	f (_,Declaration) [n, t] = t ++ " " ++ n ++ ";\n"
+	f (_,Declaration) [ns, t] = t ++ " " ++ ns ++ ";\n"
         f (_,x) xs = error ("C does not support " ++ show x)
+
+
+-- [x,y,z] => x,y,z;
+
+showList :: [String] -> String
+showList = foldr f ""
+  where f n [] = n
+        f n ns = n ++ ", " ++ ns
 
 -- [x,y,z] => x->y->z
 
 showJoin = foldr f ""
   where f x [] = x
-        f x xs = x ++ "->" ++  xs  
+        f x xs = x ++ "->" ++ xs  
 
 -- a.b b[a]
 -- a.b.c (b.c)[a] c[b][a]
@@ -372,7 +379,7 @@ in loops).
 transform :: Env -> AST -> (AST, AST)
 transform stateVars program = (locals, tprog)
   where (tprog, _, used) = tassign stateVars (transformGuards program) newNames
-        locals = Node (startLoc, Locals) (listToDecls used) 
+        locals = Node (startLoc, List) (listToDecls used) 
 
 listToDecls :: Env -> [AST]
 listToDecls env = [ Node (startLoc, Declaration) [string n, explicateRecordTypes t] | (n,t) <- env ]

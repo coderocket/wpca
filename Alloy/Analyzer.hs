@@ -32,9 +32,9 @@ work cfg (Node (_,Program) [Node (_,List) records, Node (_,List) procs, Node (_,
                          loop ps
 
 analyzeProc :: Config -> [AST] -> [AST]-> AST -> IO ()
-analyzeProc cfg theory records (Node (p,Proc name) [params,pre,body,post]) = 
+analyzeProc cfg theory records (Node (p,Proc name) [params,locals,pre,body,post]) = 
   do [analysisFile] <- lookupM "alloy.analysisfile" cfg 
-     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) theory records (Node (p, Spec) [params,pre,body,post])
+     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) theory records (Node (p, Spec) [append params locals,pre,body,post])
 
 {-
 
@@ -102,7 +102,7 @@ augment records code@(Node (pos,Spec) [locals, pre, program, post]) =
            Node datum (map (f bound env) children)
         initEnv = [ (n, StateVar n) | (n,_) <- (getStateVars records code) ] ++ [ (n, ConstVar n) | (n,_) <- getConstants records code ]
         augmentQuantifier bound env pos kind decls body =
-          Node (pos, Quantifier kind) [Node (pos, Locals) (augmentDecls bound env (subForest decls)), f ((declNames decls)++bound) env body]
+          Node (pos, Quantifier kind) [Node (pos, List) (augmentDecls bound env (subForest decls)), f ((declNames decls)++bound) env body]
         augmentDecls bound env ds = [ Node (pos, Declaration) [ns, f bound env t] | (Node (pos,Declaration) [ns,t]) <- ds ]
   
 getStateVars :: [AST] -> AST -> Env
@@ -222,7 +222,6 @@ showA = foldRose f
         f (_, Type n) [] = n
 	f (_, Output) [x] = x
         f (_, ArrayType _ t) [] = if t == "int" then "seq Int" else ("seq " ++ t)
-        f (_, Locals) decls = showNames decls
         f (_, Declaration) [names, typ] = names ++ " : " ++ typ
         f (_, List) names = showNames names
         f (_, Quantifier Sum) [decls, e] = "(sum " ++ decls ++ " | " ++ e ++ ")"

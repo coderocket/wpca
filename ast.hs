@@ -6,7 +6,7 @@ type Env = [(String,AST)]
 
 type AST = Tree (Loc,Kind)
 
-data Kind = Int Int | String String | Type String | Spec | Locals | Declaration | Assert | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | ArrayJoin | Greater | Less | List | Not | Break | ArrayType String String | Range | Quantifier Quantifier | StateVar String | ConstVar String | Pair | Union | Update | Closure | SomeSet | Product | In | Proc String | Record String | Program | Output | OutputVar | RecordType String | Reverse
+data Kind = Int Int | String String | Type String | Spec | Declaration | Assert | Assign | Loop | Cond | Seq | Skip | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | ArrayJoin | Greater | Less | List | Not | Break | ArrayType String String | Range | Quantifier Quantifier | StateVar String | ConstVar String | Pair | Union | Update | Closure | SomeSet | Product | In | Proc String | Record String | Program | Output | OutputVar | RecordType String | Reverse
   deriving (Eq,Show)
 
 data PassStyle = PassIn | PassOut | PassInOut
@@ -22,6 +22,16 @@ declsToList :: [AST] -> [(String, AST)]
 
 declsToList ds = foldr (++) [] (map f ds) 
   where f (Node (_,Declaration) [(Node (_,List) ds), t]) = foldr (\ (Node (_,String x) []) xs -> (x,t):xs) [] ds
+
+separateDecls :: [AST] -> AST
+separateDecls = Node (startLoc, List) . foldr f []
+  where f (Node (dpos,Declaration) [(Node (_,List) ds), t]) rest = 
+          (foldr g [] ds) ++ rest
+             where g (Node (pos,String n) []) ds = Node (dpos, Declaration) [ Node(pos,List) [string n], t ] : ds
+
+
+append :: AST -> AST -> AST
+append (Node (p1,List) xs) (Node (p2,List) ys) = Node (p1,List) (xs++ys)
 
 close :: AST -> AST
 
