@@ -1,7 +1,9 @@
-- 
-- ensure that alloy stops when it detects a type error
 
-- allocating objects
+- Extend the analyzer to check that the preconditions are satisfiable. 
+
+- Ensure that alloy stops when it detects a type error
+
+- Allocating objects
 
   - every record is a sig that extends Object
 

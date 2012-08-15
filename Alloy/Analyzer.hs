@@ -76,7 +76,7 @@ generate cfg theory records code =
      [analysisFile] <- lookupM "alloy.analysisfile" cfg
      libraries <- lookupM "alloy.analysislibraries" cfg
      putStrLn ("... There are " ++ (show (length obligs)) ++ " proof obligations. Writing analysis file to " ++ analysisFile)
-     writeFile analysisFile (showModelX (libraries++[s | Node (_,String s) [] <- theory]) records stateVars constants obligs)
+     writeFile analysisFile (showModel (libraries++[s | Node (_,String s) [] <- theory]) records stateVars constants obligs)
      return (obligs, stateVars ++ constants)
 
 -- Alloy does not care if the join is due to an array or due to a relation
@@ -184,16 +184,8 @@ showModel :: [String] -> [AST] -> Env -> Env -> [(String,Oblig)] -> String
 
 showModel libraries records stateVars constants obligs =
  (foldr (++) "" [ "open " ++ s ++ "\n" | s <- libraries])
- ++ (showRecords records)
- ++ "one sig State {\n " ++ (showEnv stateVars) ++ "\n}\n" 
- ++ "one sig Const {\n " ++ (showEnv constants) ++ "\n}\n"
- ++ (showConstraints (stateVars ++ constants)) ++ "\n\n"
- ++ (foldr (++) "" (map showOblig obligs))
-
-showModelX libraries records stateVars constants obligs =
- (foldr (++) "" [ "open " ++ s ++ "\n" | s <- libraries])
- ++ (showRecordsX records) 
- ++ (foldr (++) "" (map (showObligX (stateVars ++ constants)) obligs))
+ ++ (showRecords records) 
+ ++ (foldr (++) "" (map (showOblig (stateVars ++ constants)) obligs))
 
 showRecords :: [AST] -> String
 showRecords = foldr (++) [] . map showRecord
@@ -205,39 +197,18 @@ showRecord (Node (_,Record name) defs) = header ++ fields ++ footer
         footer = "}\n"
 
 showDef :: AST -> String
-showDef x = ""
-
-showRecordsX :: [AST] -> String
-showRecordsX = foldr (++) [] . map showRecordX
-
-showRecordX :: AST -> String
-showRecordX (Node (_,Record name) defs) = header ++ fields ++ footer
-  where header = "sig " ++ name ++ " extends Object {\n" 
-        fields = separateByComma (map showDefX defs)
-        footer = "}\n"
-
-showDefX :: AST -> String
-showDefX (Node (_,Declaration) [Node (_,List) names,typ]) = (showNames [ n | (Node (_,String n) []) <- names]) ++ ":" ++ showType typ ++ "\n"
+showDef (Node (_,Declaration) [Node (_,List) names,typ]) = (showNames [ n | (Node (_,String n) []) <- names]) ++ ":" ++ showType typ ++ "\n"
 
 showConstraints :: Env -> String
-showConstraints env = foldr (++) "" (map f env)
- where
- f (n, Node (_, Type "nat") []) = "fact { all s : State | s."++n++".gte[0] }\n"
- f (n, Node (_, ArrayType k _) []) = "fact { all s : State | #s."++n++"=s."++k++"}\n"
- f _ = ""
-
-showConstraintsX :: Env -> String
-showConstraintsX env = "{" ++ (foldr (++) "" (map f env)) ++ "}"
+showConstraints env = "{" ++ (foldr (++) "" (map f env)) ++ "}"
  where
  f (n, Node (_, Type "nat") []) = "(" ++ n++".gte[0])\n"
  f (n, Node (_, ArrayType k _) []) = "(#"++n++"="++k++")\n"
  f _ = ""
- 
-showOblig (nm, (wp, path, goal)) = "\n/*\ngoal: " ++ goal ++ "\npath: " ++ (show path) ++ "\n*/\n" ++ "assert " ++ nm ++ " {\n" ++ (showA wp) ++ "\n}\ncheck " ++ nm ++ "\n\n"
 
-showObligX env (nm, (wp, path, goal)) = comment ++ pred ++ assertion ++ check
+showOblig env (nm, (wp, path, goal)) = comment ++ pred ++ assertion ++ check
   where comment = "\n/*\ngoal: " ++ goal ++ "\npath: " ++ (show path) ++ "\n*/\n" 
-        pred = "pred pred_" ++ nm ++ "[" ++ (showEnv env) ++ "]\n{\n"  ++ (showConstraintsX env) ++ " =>\n\t" ++ (showAX wp) ++ "\n}\n"
+        pred = "pred pred_" ++ nm ++ "[" ++ (showEnv env) ++ "]\n{\n"  ++ (showConstraints env) ++ " =>\n\t" ++ (showA wp) ++ "\n}\n"
         assertion = "assert " ++ nm ++ " {\nall " ++ (showEnv env) ++ "| pred_" ++ nm ++ "[" ++ (showEnvNames env) ++ "]" ++ "\n}\n"
         check = "check " ++ nm ++ "\n\n"
 
@@ -306,56 +277,6 @@ showA = foldRose f
         f (_, Quantifier Some) [decls, e] = "(some " ++ decls ++ " | " ++ e ++ ")"
         f (_, SomeSet) [e] = "(some " ++ e ++ ")"
         f (_, String n) [] = n
-        f (_, StateVar n) [] = "State." ++ n
-        f (_, ConstVar n) [] = "Const." ++ n
-        f (_, Pair) [x,y] = "(" ++ x ++ " -> " ++ y  ++ ")"
-        f (_, Union) [x,y] = "(" ++ x ++ " + " ++ y  ++ ")"
-        f (_, SetDiff) [x,y] = "(" ++ x ++ " - " ++ y  ++ ")"
-        f (_, Update) [x,y] = "(" ++ x ++ " ++ " ++ y  ++ ")"
-	f (_, Closure) [x] = x
-	f other ns = error ("Internal error: Don't know how to show " ++ (show other))
-
-showAX :: AST -> String
-showAX = foldRose f
-  where f (_, Plus) [x,y] = x ++ ".add[" ++ y ++ "]"
-        f (_, Minus) [x,y] = x ++ ".sub[" ++ y ++ "]"
-        f (_, Times) [x,y] = x ++ ".mul[" ++ y ++"]"
-        f (_, Div) [x,y] = x ++ ".div[" ++ y ++"]"
-        f (_, Mod) [x,y] = x ++ ".rem[" ++ y ++"]"
-        f (_, Quotient) [x,y] = "(" ++ x ++ " / " ++ y ++ ")"
-        f (_, Eq) [x,y] = x ++ " = " ++ y
-        f (_, NotEq) [x,y] = x ++ " != " ++ y
-        f (_, Greater) [x,y] = x ++ " > " ++ y
-        f (_, Less) [x,y] = x ++ " < " ++ y
-        f (_, Geq) [x,y] = x ++ " >= " ++ y
-        f (_, Leq) [x,y] = x ++ " <= " ++ y
-        f (_, In) [x,y] = "(" ++ x ++ " in " ++ y ++ ")"
-        f (_, Conj) [x,y] = x ++ " and " ++ y
-        f (_, Disj) [x,y] = "("++ x ++ " or " ++ y++")"
-        f (_, Implies) [x,y] = "(" ++ x ++ " => " ++ y ++")"
-        f (_, Range) [x,y] = "range[" ++ x ++ "," ++ y ++ "]"
-        f (_, Join) xs = (showJoin xs)
-        f (_, Product) xs = (showRel xs)
-        f (_, Not) [x] = "!(" ++ x ++ ")"
-        f (_, Neg) [x] = x ++ ".negate"
-        f (_, Reverse) [x] = "~(" ++ x ++ ")"
-        f (_, Int x) [] = show x
-        f (_, AST.True) [] = "true"
-        f (_, AST.False) [] = "false"
-        f (_, Const) [x] = x
-        f (_, Type "int") [] = "Int"
-        f (_, Type "nat") [] = "Int"
-        f (_, Type n) [] = n
-	f (_, Output) [x] = x
-        f (_, ArrayType _ t) [] = if t == "int" then "seq Int" else ("seq " ++ t)
-        f (_, Declaration) [names, typ] = names ++ " : " ++ typ
-        f (_, List) names = showNames names
-        f (_, Quantifier Sum) [decls, e] = "(sum " ++ decls ++ " | " ++ e ++ ")"
-        f (_, Quantifier All) [decls, e] = "(all " ++ decls ++ " | " ++ e ++ ")"
-        f (_, Quantifier No) [decls, e] = "(no " ++ decls ++ " | " ++ e ++ ")"
-        f (_, Quantifier Some) [decls, e] = "(some " ++ decls ++ " | " ++ e ++ ")"
-        f (_, SomeSet) [e] = "(some " ++ e ++ ")"
-        f (_, String n) [] = n
         f (_, StateVar n) [] = n
         f (_, ConstVar n) [] = n
         f (_, Pair) [x,y] = "(" ++ x ++ " -> " ++ y  ++ ")"
@@ -364,7 +285,6 @@ showAX = foldRose f
         f (_, Update) [x,y] = "(" ++ x ++ " ++ " ++ y  ++ ")"
 	f (_, Closure) [x] = x
 	f other ns = error ("Internal error: Don't know how to show " ++ (show other))
-
 
 showRel = foldr f ""
   where f x [] = x
