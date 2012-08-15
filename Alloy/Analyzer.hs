@@ -191,8 +191,8 @@ showModel libraries records stateVars constants obligs =
  ++ (foldr (++) "" (map showOblig obligs))
 
 showModelX libraries records stateVars constants obligs =
- "module wpca_analysis [" ++ (showRecordsX records) ++ "]\n"
- ++ (foldr (++) "" [ "open " ++ s ++ "\n" | s <- libraries])
+ (foldr (++) "" [ "open " ++ s ++ "\n" | s <- libraries])
+ ++ (showRecordsX records) 
  ++ (foldr (++) "" (map (showObligX (stateVars ++ constants)) obligs))
 
 showRecords :: [AST] -> String
@@ -208,8 +208,16 @@ showDef :: AST -> String
 showDef x = ""
 
 showRecordsX :: [AST] -> String
-showRecordsX = separateByComma . map f
-  where f (Node (_,Record name) _) = name
+showRecordsX = foldr (++) [] . map showRecordX
+
+showRecordX :: AST -> String
+showRecordX (Node (_,Record name) defs) = header ++ fields ++ footer
+  where header = "sig " ++ name ++ " extends Object {\n" 
+        fields = separateByComma (map showDefX defs)
+        footer = "}\n"
+
+showDefX :: AST -> String
+showDefX (Node (_,Declaration) [Node (_,List) names,typ]) = (showNames [ n | (Node (_,String n) []) <- names]) ++ ":" ++ showType typ ++ "\n"
 
 showConstraints :: Env -> String
 showConstraints env = foldr (++) "" (map f env)
