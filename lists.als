@@ -1,4 +1,4 @@
-module list
+module lists
 
 open partialOrder[univ] 
 open misc

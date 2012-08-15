@@ -12,4 +12,4 @@ proc Reverse[h,p: Node]
   od
 	{ nullterminated[next,h] and ~corange[next,h,NULL] = corange[NEXT,H,NULL] }
 
-theory list2
+theory lists
