@@ -8,4 +8,3 @@ pred nullterminated[r : univ -> univ, h : univ] {
 	NULL in h.*r
 }
 
-fun rev[r : univ -> univ] : univ -> univ { ~r }
