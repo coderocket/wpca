@@ -41,6 +41,8 @@ tokens :-
   "*"                                   { \p s -> TokStar (loc p) }
   "/"                                   { \p s -> TokSlash (loc p) }
   "|"                                   { \p s -> TokBar (loc p) }
+  "is"					{ \p s -> TokIs (loc p) }
+  "new"					{ \p s -> TokNew (loc p) }
   "in"					{ \p s -> TokIn (loc p) }
   "out"					{ \p s -> TokOut (loc p) }
   "true"                                { \p s -> TokTrue (loc p) }
@@ -77,6 +79,8 @@ loc (AlexPn _ line col) = (line,col)
 -- The token type:
 
 data Token =
+	TokIs Loc |
+	TokNew Loc |
 	TokRev Loc |
 	TokUnion Loc |
 	TokOut Loc |
@@ -136,6 +140,8 @@ data Token =
 	TokKeep Loc 
 	deriving (Eq,Show)
 
+pos (TokIs p) = p
+pos (TokNew p) = p
 pos (TokRev p) = p
 pos (TokUnion p) = p
 pos (TokOut p) = p

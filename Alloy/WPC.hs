@@ -95,6 +95,20 @@ wpx :: AST -> [Oblig] -> [Oblig]
 wpx (Node (_,Assign) [Node (_,List) ns, Node (_,List) es]) post = 
   [ (subst [] (collect (zip ns es)) expr, path, goal) | (expr,path,goal) <- post ]
 
+{-
+
+wp (x is new T) P = some (T - extent) and all x : T - extent | P[extent := extent + x])
+
+-}
+
+-- because we quantify over state variables we must first replace every occurence of the state
+-- variable with a plain (string) variable.
+
+wpx (Node (_,Alloc name) [typ]) post = [ (f p, path, goal) | (p, path, goal) <- post ]
+  where f p = (someSet fresh) `conj` (AST.all name fresh (subst [] [(name, string name), ("extent", (stateVar "extent") `AST.union` (string name))] p))
+        fresh = typ `setDiff` (stateVar "extent")
+
+
 wpx (Node (_,Skip) []) post = post
 wpx (Node (pos,Assert) [p]) post = (p,[pos],"satisfy the assertion"):post
 wpx (Node (_,Seq) [x,y]) post = wpx x ((wpx y) post)

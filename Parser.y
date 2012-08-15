@@ -22,6 +22,8 @@ import Loc
 	'nat'	{ TokNatType $$ }
 	'array'	{ TokArray $$ }
 	'of'	{ TokOf $$ }
+	'is'	{ TokIs $$ }
+	'new'	{ TokNew $$ }
 	int	{ TokInt $$ }
 	name	{ TokName $$ }
 	'in'	{ TokIn $$ }
@@ -125,8 +127,11 @@ Seq : Stmt { $1 }
 Stmt : If { $1 }
     | Assign { $1 }
     | Assert { $1 }
+    | Allocate { $1 }
     | Do { $1 }
     | 'skip' { Node ($1,Skip) [] }
+
+Allocate : name 'is' 'new' name { Node ($2,Alloc (snd $1)) [ Node(fst $4, String (snd $4)) []] }
 
 Do : DoOk { $1 }
 	| DoError { $1 }

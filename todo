@@ -1,3 +1,35 @@
+- 
+- ensure that alloy stops when it detects a type error
+
+- allocating objects
+
+  - every record is a sig that extends Object
+
+  - the variable extent keeps track of all the used objects
+
+  - the 'is new' statement binds a new object to a variable:
+
+     x : T
+   ; x is new
+
+  'is new' does two things: 
+
+    1. It binds x to  an object from Object - extent  
+    2. It sets extent to extent + x
+
+  the semantics of is new is as follows:
+
+  { some T - extent and extent = E }
+    x is new
+  { x in T - extent and extent = E + x  }
+
+  with the side condition that x is a variable of type T and T is a record type.
+
+  the wp of 'is new' is based on the wp of a specification statement:
+
+
+  wp(x is new, P) = some (T - extent) and all x : T - extent | P[extent := extent + x])
+
 - Support transforming ASTs
 
 an AST is a tree whose nodes represent the abstract syntax of 

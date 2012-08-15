@@ -180,6 +180,7 @@ showCode = foldRose f
         f (_,Cond) [g,x,y] = "if (" ++ g ++ ") {\n" ++ x ++ "\n} else {\n" ++ y ++"}\n"
         f (_,Loop) [gs] = "while(1) {\n" ++ gs ++ "\n}\n"
 	f (_,Declaration) [ns, t] = t ++ " " ++ ns ++ ";\n"
+	f (_,Alloc var) [typ] = var ++ " = (" ++ typ ++ "*)malloc(sizeof(" ++ typ ++ "));\n"
         f (_,x) xs = error ("C does not support " ++ show x)
 
 

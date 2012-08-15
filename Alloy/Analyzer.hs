@@ -71,12 +71,12 @@ generate cfg theory records code =
   do putStrLn "Generating model..." 
      stateVars <- return $ getStateVars records code
      constants <- return $ getConstants records code 
-     acode <- augment records (tidyJoins code)
+     acode <- augment records (tidyOps ((getRecordTypes records) ++ stateVars) (tidyJoins code))
      obligs <- calcObligs acode
      [analysisFile] <- lookupM "alloy.analysisfile" cfg
      libraries <- lookupM "alloy.analysislibraries" cfg
      putStrLn ("... There are " ++ (show (length obligs)) ++ " proof obligations. Writing analysis file to " ++ analysisFile)
-     writeFile analysisFile (showModel (libraries++[s | Node (_,String s) [] <- theory]) stateVars constants obligs)
+     writeFile analysisFile (showModel (libraries++[s | Node (_,String s) [] <- theory]) records stateVars constants obligs)
      return (obligs, stateVars ++ constants)
 
 -- Alloy does not care if the join is due to an array or due to a relation
@@ -85,6 +85,28 @@ tidyJoins :: AST -> AST
 tidyJoins = foldRose f 
   where f (pos, ArrayJoin) es = Node (pos, Join) es
         f k es = Node k es
+
+-- Decide if to treat the two operands of a '+' or a '-' operator as sets or as integers.
+-- We treat both as sets unless both types are integers.
+
+tidyOps :: Env -> AST -> AST
+tidyOps env (Node (pos, Plus) [x,y]) = 
+  if typeof env x == intType && typeof env y == intType
+  then Node (pos, Plus) [x,y]
+  else Node (pos, Union) [x,y]
+tidyOps env (Node (pos, Minus) [x,y]) = 
+  if typeof env x == intType && typeof env y == intType
+  then Node (pos, Minus) [x,y]
+  else Node (pos, SetDiff) [x,y]
+tidyOps env (Node (pos, Quantifier q) [ Node(_,List) decls, body]) = 
+  Node (pos, Quantifier q) [tidyOpsDecls env decls, tidyOps ((declsToList decls) ++ env) body]
+tidyOps env (Node (pos, t) subnodes) = 
+  Node (pos, t) (map (tidyOps env) subnodes) 
+
+tidyOpsDecls :: Env -> [AST] -> AST
+
+tidyOpsDecls env decls = Node (startLoc, List) [ Node (startLoc, Declaration) [ns, tidyOps env t] | (Node (_,Declaration) [ns,t]) <- decls ]
+
 
 augment :: [AST] -> AST -> IO (AST)
 
@@ -108,7 +130,8 @@ augment records code@(Node (pos,Spec) [locals, pre, program, post]) =
 getStateVars :: [AST] -> AST -> Env
 
 getStateVars records (Node (_,Spec) [locals, pre, program, post]) = 
-  getStateEnv records (subForest locals)
+  builtInStateVars ++ getStateEnv records (subForest locals)
+  where builtInStateVars = [("extent", setType "Object")]
 
 getConstants records (Node (_,Spec) [locals, pre, program, post]) = 
   cvars (getStateEnv records (subForest locals)) pre
@@ -127,6 +150,12 @@ getFieldVars (Node (_,Record name) fields) = f fields
 getFieldVar :: String -> (String,AST) -> (String,AST)
 getFieldVar left (relName, right) = 
   (relName, Node (startLoc,Product) [ Node (startLoc,String left) [], right])
+
+getRecordTypes :: [AST] -> Env
+getRecordTypes = map getRecordType
+
+getRecordType :: AST -> (String,AST)
+getRecordType (Node (_, Record name) _) = (name, setType name)
 
 cvars :: Env -> AST -> Env
 
@@ -151,14 +180,27 @@ calcObligs (Node (_,Spec) [locals, pre, program, post]) =
  where names = ["test"++(show i) | i <- [1..] ] 
        obligations = wpx program [(post,[],"satisfy the postcondition")]
 
-showModel :: [String] -> Env -> Env -> [(String,Oblig)] -> String
+showModel :: [String] -> [AST] -> Env -> Env -> [(String,Oblig)] -> String
 
-showModel libraries stateVars constants obligs =
+showModel libraries records stateVars constants obligs =
  (foldr (++) "" [ "open " ++ s ++ "\n" | s <- libraries])
+ ++ (showRecords records)
  ++ "one sig State {\n " ++ (showEnv stateVars) ++ "\n}\n" 
  ++ "one sig Const {\n " ++ (showEnv constants) ++ "\n}\n"
  ++ (showConstraints (stateVars ++ constants)) ++ "\n\n"
  ++ (foldr (++) "" (map showOblig obligs))
+
+showRecords :: [AST] -> String
+showRecords = foldr (++) [] . map showRecord
+
+showRecord :: AST -> String
+showRecord (Node (_,Record name) defs) = header ++ fields ++ footer
+  where header = "sig " ++ name ++ " extends Object {\n" 
+        fields = separateByComma (map showDef defs)
+        footer = "}\n"
+
+showDef :: AST -> String
+showDef x = ""
 
 showConstraints :: Env -> String
 showConstraints env = foldr (++) "" (map f env)
@@ -183,6 +225,7 @@ showType = foldRose f
         f (_, Type "nat") [] = "Int"
         f (_, Type n) [] = n
         f (_, ArrayType _ t) [] = if t == "int" then "seq Int" else ("seq " ++ t)
+        f (_, SetType t) [] = "set " ++ t
         f (_, String n) [] = n ++ " + NULL"
         f (_, Const) [x] = x
         f (_, Product) xs = (showRel xs)
@@ -234,6 +277,7 @@ showA = foldRose f
         f (_, ConstVar n) [] = "Const." ++ n
         f (_, Pair) [x,y] = "(" ++ x ++ " -> " ++ y  ++ ")"
         f (_, Union) [x,y] = "(" ++ x ++ " + " ++ y  ++ ")"
+        f (_, SetDiff) [x,y] = "(" ++ x ++ " - " ++ y  ++ ")"
         f (_, Update) [x,y] = "(" ++ x ++ " ++ " ++ y  ++ ")"
 	f (_, Closure) [x] = x
 	f other ns = error ("Internal error: Don't know how to show " ++ (show other))
@@ -338,6 +382,7 @@ showTuples typ ts =
   case typ of
     Node (_,Product) es -> "[" ++ (showAsRelation ts) ++ "]"
     Node (_,ArrayType _ _) [] -> "[" ++ (showAsArray ts) ++ "]"
+    Node (_,SetType _) [] -> "[" ++ (showAsRelation ts) ++ "]"
     otherwise -> head (head ts)
 
 {-

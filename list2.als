@@ -3,7 +3,7 @@ module list
 open partialOrder[univ] 
 open misc
 
-sig Node {}
+sig Node extends Object {}
 
 pred nullterminated[r : univ -> univ, h : univ] {
 	list[r]
