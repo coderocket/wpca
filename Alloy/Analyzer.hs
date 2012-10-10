@@ -73,11 +73,15 @@ generate cfg theory records code =
      constants <- return $ getConstants records code 
      acode <- augment records (tidyOps ((getRecordTypes records) ++ stateVars) (tidyJoins code))
      obligs <- calcObligs acode
+     consistencyCheck <- generateConsistencyCheck acode
      [analysisFile] <- lookupM "alloy.analysisfile" cfg
      libraries <- lookupM "alloy.analysislibraries" cfg
      putStrLn ("... There are " ++ (show (length obligs)) ++ " proof obligations. Writing analysis file to " ++ analysisFile)
      writeFile analysisFile (showModel (libraries++[s | Node (_,String s) [] <- theory]) records stateVars constants obligs)
      return (obligs, stateVars ++ constants)
+
+generateConsistencyCheck :: AST -> IO String
+generateConsistencyCheck (Node (p,Spec) [locals,pre,body,post]) = return ""
 
 -- Alloy does not care if the join is due to an array or due to a relation
 

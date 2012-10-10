@@ -1,3 +1,13 @@
+- Use the keyword 'var' to disambiguate the local variables from
+the assignment statement
+
+does not help us because the problem is the mix between a sequence
+of variable definitions and a sequence of statements (both are separated by ;)
+
+- Remember to ensure that output parameters are disjoint 
+
+when we pass variables as output parameters to a procedure the
+variables must be disjoint.
 
 - Extend the analyzer to check that the preconditions are satisfiable. 
 
