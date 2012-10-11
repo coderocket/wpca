@@ -181,6 +181,7 @@ showCode = foldRose f
         f (_,Loop) [gs] = "while(1) {\n" ++ gs ++ "\n}\n"
 	f (_,Declaration) [ns, t] = t ++ " " ++ ns ++ ";\n"
 	f (_,Alloc var) [typ] = var ++ " = (" ++ typ ++ "*)malloc(sizeof(" ++ typ ++ "));\n"
+	f (_,Call name) args = name ++ "(" ++ (CLang.Generator.showList args) ++ ");" 
         f (_,x) xs = error ("C does not support " ++ show x)
 
 

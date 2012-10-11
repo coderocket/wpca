@@ -26,15 +26,45 @@ definitions.
 -}
 
 work :: Config -> AST -> IO ()
-work cfg (Node (_,Program) [Node (_,List) records, Node (_,List) procs, Node (_,List) theory]) = loop procs
+work cfg (Node (_,Program) [Node (_,List) records, Node (_,List) procs, Node (_,List) theory]) = 
+  loop eprocs
   where loop [] = return ()
-        loop (p:ps) = do analyzeProc cfg theory records p 
+        loop (p:ps) = do analyzeProc cfg env theory records p 
                          loop ps
+	eprocs = extractConstants records procs
+	env = [ (getProcName proc, proc) | proc <- eprocs ]
 
-analyzeProc :: Config -> [AST] -> [AST]-> AST -> IO ()
-analyzeProc cfg theory records (Node (p,Proc name) [params,locals,pre,body,post]) = 
+getProcName (Node (_,Proc name) _) = name
+
+extractConstants :: [AST] -> [AST] -> [AST]
+
+extractConstants records procs = 
+  [ Node (p, Proc name) [params, locals, f params pre, pre, body, post] | 
+           (Node (p, Proc name) [params, locals, pre, body, post]) <- procs ] 
+  where f params pre = Node (startLoc, List) (cvars (getStateEnv records (subForest params)) pre)
+
+cvars :: Env -> AST -> [AST]
+
+-- To find the type of a constant (a.k.a model) variable
+-- we look for either a top level equality expression or
+-- an equality expression in top level conjunctions where
+-- the left hand side is a state variable and the right
+-- hand side is the constant variable.
+
+cvars types (Node (_,Eq) [expr, (Node (p,String c) [])]) =
+    case (lookup c types) of
+      Nothing -> [ declaration c (typeof types expr) ]
+      (Just _) -> []
+
+cvars types (Node (_, Conj) [x, y]) = xtypes ++ (cvars ((declsToList xtypes)++types) y)
+  where xtypes = cvars types x
+
+cvars types _ = []
+
+analyzeProc :: Config -> Env -> [AST] -> [AST]-> AST -> IO ()
+analyzeProc cfg procs theory records (Node (p,Proc name) [params,locals,constants,pre,body,post]) = 
   do [analysisFile] <- lookupM "alloy.analysisfile" cfg 
-     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) theory records (Node (p, Spec) [append params locals,pre,body,post])
+     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) procs theory records (Node (p, Spec) [append params locals, constants, pre,body,post])
 
 {-
 
@@ -44,10 +74,10 @@ we generate a report based on the results of the analysis.
 
 -}
 
-analyzeSpec :: Config -> [AST] -> [AST] -> AST -> IO ()
+analyzeSpec :: Config -> Env -> [AST] -> [AST] -> AST -> IO ()
 
-analyzeSpec cfg theory records code = 
-  do (obligs,types) <- generate cfg theory records code
+analyzeSpec cfg procs theory records code = 
+  do (obligs,types) <- generate cfg procs theory records code
      analyse cfg 
      report types cfg obligs
 
@@ -65,14 +95,14 @@ the report.
 
 -}
 
-generate :: Config -> [AST] -> [AST] -> AST -> IO ([(String,Oblig)], Env)
+generate :: Config -> Env -> [AST] -> [AST] -> AST -> IO ([(String,Oblig)], Env)
 
-generate cfg theory records code = 
+generate cfg procs theory records code = 
   do putStrLn "Generating model..." 
      stateVars <- return $ getStateVars records code
-     constants <- return $ getConstants records code 
+     constants <- return $ getConstants code 
      acode <- augment records (tidyOps ((getRecordTypes records) ++ stateVars) (tidyJoins code))
-     obligs <- calcObligs acode
+     obligs <- calcObligs procs acode
      consistencyCheck <- generateConsistencyCheck acode
      [analysisFile] <- lookupM "alloy.analysisfile" cfg
      libraries <- lookupM "alloy.analysislibraries" cfg
@@ -81,7 +111,7 @@ generate cfg theory records code =
      return (obligs, stateVars ++ constants)
 
 generateConsistencyCheck :: AST -> IO String
-generateConsistencyCheck (Node (p,Spec) [locals,pre,body,post]) = return ""
+generateConsistencyCheck (Node (p,Spec) [locals,constants,pre,body,post]) = return ""
 
 -- Alloy does not care if the join is due to an array or due to a relation
 
@@ -114,8 +144,8 @@ tidyOpsDecls env decls = Node (startLoc, List) [ Node (startLoc, Declaration) [n
 
 augment :: [AST] -> AST -> IO (AST)
 
-augment records code@(Node (pos,Spec) [locals, pre, program, post]) = 
-  return $ Node (pos,Spec) [locals, f [] initEnv pre, f [] initEnv program, f [] initEnv post] 
+augment records code@(Node (pos,Spec) [locals, constants, pre, program, post]) = 
+  return $ Node (pos,Spec) [locals, constants, f [] initEnv pre, f [] initEnv program, f [] initEnv post] 
   where f bound env (Node (pos, String n) []) = 
           case (elemIndex n bound) of 
            Nothing -> case (lookup n env) of
@@ -126,19 +156,21 @@ augment records code@(Node (pos,Spec) [locals, pre, program, post]) =
           augmentQuantifier bound env pos q decls body
         f bound env (Node datum children) = 
            Node datum (map (f bound env) children)
-        initEnv = [ (n, StateVar n) | (n,_) <- (getStateVars records code) ] ++ [ (n, ConstVar n) | (n,_) <- getConstants records code ]
+        initEnv = [ (n, String n) | (n,_) <- (getStateVars records code) ] ++ [ (n, String n) | (n,_) <- getConstants code ]
         augmentQuantifier bound env pos kind decls body =
           Node (pos, Quantifier kind) [Node (pos, List) (augmentDecls bound env (subForest decls)), f ((declNames decls)++bound) env body]
         augmentDecls bound env ds = [ Node (pos, Declaration) [ns, f bound env t] | (Node (pos,Declaration) [ns,t]) <- ds ]
   
+getConstants :: AST -> Env
+
+getConstants (Node (_,Spec) [locals, Node (_,List) constants, pre, program, post]) = 
+	declsToList constants
+
 getStateVars :: [AST] -> AST -> Env
 
-getStateVars records (Node (_,Spec) [locals, pre, program, post]) = 
+getStateVars records (Node (_,Spec) [locals, constants, pre, program, post]) = 
   builtInStateVars ++ getStateEnv records (subForest locals)
   where builtInStateVars = [("extent", setType "Object")]
-
-getConstants records (Node (_,Spec) [locals, pre, program, post]) = 
-  cvars (getStateEnv records (subForest locals)) pre
 
 getStateEnv :: [AST] -> [AST] -> Env
 getStateEnv records locals = 
@@ -161,28 +193,10 @@ getRecordTypes = map getRecordType
 getRecordType :: AST -> (String,AST)
 getRecordType (Node (_, Record name) _) = (name, setType name)
 
-cvars :: Env -> AST -> Env
-
--- To find the type of a constant (a.k.a model) variable
--- we look for either a top level equality expression or
--- an equality expression in top level conjunctions where
--- the left hand side is a state variable and the right
--- hand side is the constant variable.
-
-cvars types (Node (_,Eq) [expr, (Node (p,String c) [])]) =
-    case (lookup c types) of
-      Nothing -> [(c, Node (p, Const) [typeof types expr])]
-      (Just _) -> []
-
-cvars types (Node (_, Conj) [x, y]) = xtypes ++ (cvars (xtypes++types) y)
-  where xtypes = cvars types x
-
-cvars types _ = []
-
-calcObligs (Node (_,Spec) [locals, pre, program, post]) = 
+calcObligs procs (Node (_,Spec) [locals, constants, pre, program, post]) = 
  return $ zip names [ (pre `implies` wp,path,goal) | (wp,path,goal) <- obligations]
  where names = ["test"++(show i) | i <- [1..] ] 
-       obligations = wpx program [(post,[],"satisfy the postcondition")]
+       obligations = wpx procs program [(post,[],"satisfy the postcondition")]
 
 showModel :: [String] -> [AST] -> Env -> Env -> [(String,Oblig)] -> String
 
@@ -212,7 +226,7 @@ showConstraints env = "{" ++ (foldr (++) "" (map f env)) ++ "}"
 
 showOblig env (nm, (wp, path, goal)) = comment ++ pred ++ assertion ++ check
   where comment = "\n/*\ngoal: " ++ goal ++ "\npath: " ++ (show path) ++ "\n*/\n" 
-        pred = "pred pred_" ++ nm ++ "[" ++ (showEnv env) ++ "]\n{\n"  ++ (showConstraints env) ++ " =>\n\t" ++ (showA wp) ++ "\n}\n"
+        pred = "pred pred_"  ++ nm ++ "[" ++ (showEnv env) ++ "]\n{\n" ++ (showConstraints env) ++ " =>\n\t" ++ (showA wp) ++ "\n}\n"
         assertion = "assert " ++ nm ++ " {\nall " ++ (showEnv env) ++ "| pred_" ++ nm ++ "[" ++ (showEnvNames env) ++ "]" ++ "\n}\n"
         check = "check " ++ nm ++ "\n\n"
 
@@ -281,8 +295,6 @@ showA = foldRose f
         f (_, Quantifier Some) [decls, e] = "(some " ++ decls ++ " | " ++ e ++ ")"
         f (_, SomeSet) [e] = "(some " ++ e ++ ")"
         f (_, String n) [] = n
-        f (_, StateVar n) [] = n
-        f (_, ConstVar n) [] = n
         f (_, Pair) [x,y] = "(" ++ x ++ " -> " ++ y  ++ ")"
         f (_, Union) [x,y] = "(" ++ x ++ " + " ++ y  ++ ")"
         f (_, SetDiff) [x,y] = "(" ++ x ++ " - " ++ y  ++ ")"
