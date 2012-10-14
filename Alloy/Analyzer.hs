@@ -61,8 +61,9 @@ cvars types _ = []
 
 analyzeProc :: Config -> Env -> [AST] -> [AST]-> AST -> IO ()
 analyzeProc cfg procs theory records (Node (p,Proc name) [params,locals,constants,pre,body,post]) = 
-  do [analysisFile] <- lookupM "alloy.analysisfile" cfg 
-     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) procs theory records (Node (p, Spec) [append params locals, constants, pre,body,post])
+  do [analysisStem] <- lookupM "alloy.analysisfile" cfg 
+     [outputStem] <- lookupM "alloy.analysisoutput" cfg
+     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisStem]):("alloy.analysisoutput", [name ++ "." ++ outputStem]):cfg) procs theory records (Node (p, Spec) [append params locals, constants, pre,body,post])
 
 {-
 
