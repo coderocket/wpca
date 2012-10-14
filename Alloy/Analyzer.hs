@@ -26,15 +26,43 @@ definitions.
 -}
 
 work :: Config -> AST -> IO ()
-work cfg (Node (_,Program) [Node (_,List) records, Node (_,List) procs, Node (_,List) theory]) = loop procs
+work cfg (Node (_,Program) [Node (_,List) records, Node (_,List) procs, Node (_,List) theory]) = 
+  loop eprocs
   where loop [] = return ()
-        loop (p:ps) = do analyzeProc cfg theory records p 
+        loop (p:ps) = do analyzeProc cfg env theory records p 
                          loop ps
+	eprocs = extractConstants records procs
+	env = makeProcEnv eprocs
 
-analyzeProc :: Config -> [AST] -> [AST]-> AST -> IO ()
-analyzeProc cfg theory records (Node (p,Proc name) [params,pre,body,post]) = 
+extractConstants :: [AST] -> [AST] -> [AST]
+
+extractConstants records procs = 
+  [ Node (p, Proc name) [params, locals, f params pre, pre, body, post] | 
+           (Node (p, Proc name) [params, locals, pre, body, post]) <- procs ] 
+  where f params pre = Node (startLoc, List) (cvars (getStateEnv records (subForest params)) pre)
+
+cvars :: Env -> AST -> [AST]
+
+-- To find the type of a constant (a.k.a model) variable
+-- we look for either a top level equality expression or
+-- an equality expression in top level conjunctions where
+-- the left hand side is a state variable and the right
+-- hand side is the constant variable.
+
+cvars types (Node (_,Eq) [expr, (Node (p,String c) [])]) =
+    case (lookup c types) of
+      Nothing -> [ declaration c (typeof types expr) ]
+      (Just _) -> []
+
+cvars types (Node (_, Conj) [x, y]) = xtypes ++ (cvars ((declsToList xtypes)++types) y)
+  where xtypes = cvars types x
+
+cvars types _ = []
+
+analyzeProc :: Config -> Env -> [AST] -> [AST]-> AST -> IO ()
+analyzeProc cfg procs theory records (Node (p,Proc name) [params,locals,constants,pre,body,post]) = 
   do [analysisFile] <- lookupM "alloy.analysisfile" cfg 
-     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) theory records (Node (p, Spec) [params,pre,body,post])
+     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisFile]):cfg) procs theory records (Node (p, Spec) [append params locals, constants, pre,body,post])
 
 {-
 
@@ -44,10 +72,10 @@ we generate a report based on the results of the analysis.
 
 -}
 
-analyzeSpec :: Config -> [AST] -> [AST] -> AST -> IO ()
+analyzeSpec :: Config -> Env -> [AST] -> [AST] -> AST -> IO ()
 
-analyzeSpec cfg theory records code = 
-  do (obligs,types) <- generate cfg theory records code
+analyzeSpec cfg procs theory records code = 
+  do (obligs,types) <- generate cfg procs theory records code
      analyse cfg 
      report types cfg obligs
 
@@ -65,19 +93,23 @@ the report.
 
 -}
 
-generate :: Config -> [AST] -> [AST] -> AST -> IO ([(String,Oblig)], Env)
+generate :: Config -> Env -> [AST] -> [AST] -> AST -> IO ([(String,Oblig)], Env)
 
-generate cfg theory records code = 
+generate cfg procs theory records code = 
   do putStrLn "Generating model..." 
      stateVars <- return $ getStateVars records code
-     constants <- return $ getConstants records code 
-     acode <- augment records (tidyJoins code)
-     obligs <- calcObligs acode
+     constants <- return $ getConstants code 
+     acode <- augment records (tidyOps ((getRecordTypes records) ++ stateVars) (tidyJoins code))
+     obligs <- calcObligs procs acode
+     consistencyCheck <- generateConsistencyCheck acode
      [analysisFile] <- lookupM "alloy.analysisfile" cfg
      libraries <- lookupM "alloy.analysislibraries" cfg
      putStrLn ("... There are " ++ (show (length obligs)) ++ " proof obligations. Writing analysis file to " ++ analysisFile)
-     writeFile analysisFile (showModel (libraries++[s | Node (_,String s) [] <- theory]) stateVars constants obligs)
+     writeFile analysisFile (showModel (libraries++[s | Node (_,String s) [] <- theory]) records stateVars constants obligs)
      return (obligs, stateVars ++ constants)
+
+generateConsistencyCheck :: AST -> IO String
+generateConsistencyCheck (Node (p,Spec) [locals,constants,pre,body,post]) = return ""
 
 -- Alloy does not care if the join is due to an array or due to a relation
 
@@ -86,10 +118,32 @@ tidyJoins = foldRose f
   where f (pos, ArrayJoin) es = Node (pos, Join) es
         f k es = Node k es
 
+-- Decide if to treat the two operands of a '+' or a '-' operator as sets or as integers.
+-- We treat both as sets unless both types are integers.
+
+tidyOps :: Env -> AST -> AST
+tidyOps env (Node (pos, Plus) [x,y]) = 
+  if typeof env x == intType && typeof env y == intType
+  then Node (pos, Plus) [x,y]
+  else Node (pos, Union) [x,y]
+tidyOps env (Node (pos, Minus) [x,y]) = 
+  if typeof env x == intType && typeof env y == intType
+  then Node (pos, Minus) [x,y]
+  else Node (pos, SetDiff) [x,y]
+tidyOps env (Node (pos, Quantifier q) [ Node(_,List) decls, body]) = 
+  Node (pos, Quantifier q) [tidyOpsDecls env decls, tidyOps ((declsToList decls) ++ env) body]
+tidyOps env (Node (pos, t) subnodes) = 
+  Node (pos, t) (map (tidyOps env) subnodes) 
+
+tidyOpsDecls :: Env -> [AST] -> AST
+
+tidyOpsDecls env decls = Node (startLoc, List) [ Node (startLoc, Declaration) [ns, tidyOps env t] | (Node (_,Declaration) [ns,t]) <- decls ]
+
+
 augment :: [AST] -> AST -> IO (AST)
 
-augment records code@(Node (pos,Spec) [locals, pre, program, post]) = 
-  return $ Node (pos,Spec) [locals, f [] initEnv pre, f [] initEnv program, f [] initEnv post] 
+augment records code@(Node (pos,Spec) [locals, constants, pre, program, post]) = 
+  return $ Node (pos,Spec) [locals, constants, f [] initEnv pre, f [] initEnv program, f [] initEnv post] 
   where f bound env (Node (pos, String n) []) = 
           case (elemIndex n bound) of 
            Nothing -> case (lookup n env) of
@@ -100,18 +154,21 @@ augment records code@(Node (pos,Spec) [locals, pre, program, post]) =
           augmentQuantifier bound env pos q decls body
         f bound env (Node datum children) = 
            Node datum (map (f bound env) children)
-        initEnv = [ (n, StateVar n) | (n,_) <- (getStateVars records code) ] ++ [ (n, ConstVar n) | (n,_) <- getConstants records code ]
+        initEnv = [ (n, String n) | (n,_) <- (getStateVars records code) ] ++ [ (n, String n) | (n,_) <- getConstants code ]
         augmentQuantifier bound env pos kind decls body =
-          Node (pos, Quantifier kind) [Node (pos, Locals) (augmentDecls bound env (subForest decls)), f ((declNames decls)++bound) env body]
+          Node (pos, Quantifier kind) [Node (pos, List) (augmentDecls bound env (subForest decls)), f ((declNames decls)++bound) env body]
         augmentDecls bound env ds = [ Node (pos, Declaration) [ns, f bound env t] | (Node (pos,Declaration) [ns,t]) <- ds ]
   
+getConstants :: AST -> Env
+
+getConstants (Node (_,Spec) [locals, Node (_,List) constants, pre, program, post]) = 
+	declsToList constants
+
 getStateVars :: [AST] -> AST -> Env
 
-getStateVars records (Node (_,Spec) [locals, pre, program, post]) = 
-  getStateEnv records (subForest locals)
-
-getConstants records (Node (_,Spec) [locals, pre, program, post]) = 
-  cvars (getStateEnv records (subForest locals)) pre
+getStateVars records (Node (_,Spec) [locals, constants, pre, program, post]) = 
+  builtInStateVars ++ getStateEnv records (subForest locals)
+  where builtInStateVars = [("extent", setType "Object")]
 
 getStateEnv :: [AST] -> [AST] -> Env
 getStateEnv records locals = 
@@ -128,46 +185,48 @@ getFieldVar :: String -> (String,AST) -> (String,AST)
 getFieldVar left (relName, right) = 
   (relName, Node (startLoc,Product) [ Node (startLoc,String left) [], right])
 
-cvars :: Env -> AST -> Env
+getRecordTypes :: [AST] -> Env
+getRecordTypes = map getRecordType
 
--- To find the type of a constant (a.k.a model) variable
--- we look for either a top level equality expression or
--- an equality expression in top level conjunctions where
--- the left hand side is a state variable and the right
--- hand side is the constant variable.
+getRecordType :: AST -> (String,AST)
+getRecordType (Node (_, Record name) _) = (name, setType name)
 
-cvars types (Node (_,Eq) [expr, (Node (p,String c) [])]) =
-    case (lookup c types) of
-      Nothing -> [(c, Node (p, Const) [typeof types expr])]
-      (Just _) -> []
-
-cvars types (Node (_, Conj) [x, y]) = xtypes ++ (cvars (xtypes++types) y)
-  where xtypes = cvars types x
-
-cvars types _ = []
-
-calcObligs (Node (_,Spec) [locals, pre, program, post]) = 
+calcObligs procs (Node (_,Spec) [locals, constants, pre, program, post]) = 
  return $ zip names [ (pre `implies` wp,path,goal) | (wp,path,goal) <- obligations]
  where names = ["test"++(show i) | i <- [1..] ] 
-       obligations = wpx program [(post,[],"satisfy the postcondition")]
+       obligations = wpx procs program [(post,[],"satisfy the postcondition")]
 
-showModel :: [String] -> Env -> Env -> [(String,Oblig)] -> String
+showModel :: [String] -> [AST] -> Env -> Env -> [(String,Oblig)] -> String
 
-showModel libraries stateVars constants obligs =
+showModel libraries records stateVars constants obligs =
  (foldr (++) "" [ "open " ++ s ++ "\n" | s <- libraries])
- ++ "one sig State {\n " ++ (showEnv stateVars) ++ "\n}\n" 
- ++ "one sig Const {\n " ++ (showEnv constants) ++ "\n}\n"
- ++ (showConstraints (stateVars ++ constants)) ++ "\n\n"
- ++ (foldr (++) "" (map showOblig obligs))
+ ++ (showRecords records) 
+ ++ (foldr (++) "" (map (showOblig (stateVars ++ constants)) obligs))
+
+showRecords :: [AST] -> String
+showRecords = foldr (++) [] . map showRecord
+
+showRecord :: AST -> String
+showRecord (Node (_,Record name) defs) = header ++ fields ++ footer
+  where header = "sig " ++ name ++ " extends Object {\n" 
+        fields = separateByComma (map showDef defs)
+        footer = "}\n"
+
+showDef :: AST -> String
+showDef (Node (_,Declaration) [Node (_,List) names,typ]) = (showNames [ n | (Node (_,String n) []) <- names]) ++ ":" ++ showType typ ++ "\n"
 
 showConstraints :: Env -> String
-showConstraints env = foldr (++) "" (map f env)
+showConstraints env = "{" ++ (foldr (++) "" (map f env)) ++ "}"
  where
- f (n, Node (_, Type "nat") []) = "fact { all s : State | s."++n++".gte[0] }\n"
- f (n, Node (_, ArrayType k _) []) = "fact { all s : State | #s."++n++"=s."++k++"}\n"
+ f (n, Node (_, Type "nat") []) = "(" ++ n++".gte[0])\n"
+ f (n, Node (_, ArrayType k _) []) = "(#"++n++"="++k++")\n"
  f _ = ""
- 
-showOblig (nm, (wp, path, goal)) = "\n/*\ngoal: " ++ goal ++ "\npath: " ++ (show path) ++ "\n*/\n" ++ "assert " ++ nm ++ " {\n" ++ (showA wp) ++ "\n}\ncheck " ++ nm ++ "\n\n"
+
+showOblig env (nm, (wp, path, goal)) = comment ++ pred ++ assertion ++ check
+  where comment = "\n/*\ngoal: " ++ goal ++ "\npath: " ++ (show path) ++ "\n*/\n" 
+        pred = "pred pred_"  ++ nm ++ "[" ++ (showEnv env) ++ "]\n{\n" ++ (showConstraints env) ++ " =>\n\t" ++ (showA wp) ++ "\n}\n"
+        assertion = "assert " ++ nm ++ " {\nall " ++ (showEnv env) ++ "| pred_" ++ nm ++ "[" ++ (showEnvNames env) ++ "]" ++ "\n}\n"
+        check = "check " ++ nm ++ "\n\n"
 
 showEnv :: Env -> String
 showEnv [] = ""
@@ -177,12 +236,16 @@ showEnv ((s,n):ns) = showBinding (s,n) ++ ",\n" ++ (showEnv ns)
 showBinding :: (String,AST) -> String
 showBinding (name, x) = name ++ " : " ++ (showType x)
 
+showEnvNames :: Env -> String
+showEnvNames = showNames . fst . unzip 
+
 showType :: AST -> String
 showType = foldRose f
   where f (_, Type "int") [] = "Int"
         f (_, Type "nat") [] = "Int"
         f (_, Type n) [] = n
         f (_, ArrayType _ t) [] = if t == "int" then "seq Int" else ("seq " ++ t)
+        f (_, SetType t) [] = "set " ++ t
         f (_, String n) [] = n ++ " + NULL"
         f (_, Const) [x] = x
         f (_, Product) xs = (showRel xs)
@@ -222,7 +285,6 @@ showA = foldRose f
         f (_, Type n) [] = n
 	f (_, Output) [x] = x
         f (_, ArrayType _ t) [] = if t == "int" then "seq Int" else ("seq " ++ t)
-        f (_, Locals) decls = showNames decls
         f (_, Declaration) [names, typ] = names ++ " : " ++ typ
         f (_, List) names = showNames names
         f (_, Quantifier Sum) [decls, e] = "(sum " ++ decls ++ " | " ++ e ++ ")"
@@ -231,10 +293,9 @@ showA = foldRose f
         f (_, Quantifier Some) [decls, e] = "(some " ++ decls ++ " | " ++ e ++ ")"
         f (_, SomeSet) [e] = "(some " ++ e ++ ")"
         f (_, String n) [] = n
-        f (_, StateVar n) [] = "State." ++ n
-        f (_, ConstVar n) [] = "Const." ++ n
         f (_, Pair) [x,y] = "(" ++ x ++ " -> " ++ y  ++ ")"
         f (_, Union) [x,y] = "(" ++ x ++ " + " ++ y  ++ ")"
+        f (_, SetDiff) [x,y] = "(" ++ x ++ " - " ++ y  ++ ")"
         f (_, Update) [x,y] = "(" ++ x ++ " ++ " ++ y  ++ ")"
 	f (_, Closure) [x] = x
 	f other ns = error ("Internal error: Don't know how to show " ++ (show other))
@@ -325,8 +386,17 @@ skolemVars types eqs =
 
 showSkolem :: Env -> [ Equation ] -> String
 showSkolem types = foldr f "" 
-  where f (Relation "Local" name tuples) rest = showRelation types name tuples
+  where f (Relation "Local" sname tuples) rest = 
+		name ++ " = " ++ (showRelation types name tuples) ++ "\n" ++ rest
+		where name = (removeSkolemPrefix sname)
         f _ rest = rest 
+
+{- skolem variables have a prefix of the form '$'<test name>'_' that we
+have to remove or we won't find the variable in the type environment.
+-}
+ 
+removeSkolemPrefix :: String -> String
+removeSkolemPrefix = drop 1 . dropWhile (/= '_')
 
 showRelation :: Env -> String -> [Tuple] -> String
 showRelation env name tuples = 
@@ -339,6 +409,7 @@ showTuples typ ts =
   case typ of
     Node (_,Product) es -> "[" ++ (showAsRelation ts) ++ "]"
     Node (_,ArrayType _ _) [] -> "[" ++ (showAsArray ts) ++ "]"
+    Node (_,SetType _) [] -> "[" ++ (showAsRelation ts) ++ "]"
     otherwise -> head (head ts)
 
 {-

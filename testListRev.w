@@ -1,10 +1,15 @@
-  next : Node <-> Node
-; NULL, h, p : Node
-	{ list[h,next] and h = H and next = NEXT and EOL = NULL }
+
+record Node {
+  next : Node 
+}
+
+proc Reverse[h,p: Node]
+	{ nullterminated[next,h] and h = H and next = NEXT }
 ; h,p := NULL,h
 ; keeping
-	 member[p,next] and member[h,next] and separate[p,NULL,h,NULL,next] and concat[rev[subchain[h,NULL,next]],subchain[p,NULL,NEXT]] = subchain[H,NULL,NEXT] 
+	 p in between[NEXT,H,NULL] and h in between[NEXT,H,NULL] and separate[corange[next,p,NULL],corange[next,h,NULL]] and concat[~corange[next,h,NULL],corange[NEXT,p,NULL]] = corange[NEXT,H,NULL] 
   do p != NULL -> p.next,p,h := h,p.next,p
   od
-	{ list[h,next] and rev[subchain[h,NULL,next]] = subchain[H,NULL,NEXT] }
+	{ nullterminated[next,h] and ~corange[next,h,NULL] = corange[NEXT,H,NULL] }
 
+theory lists

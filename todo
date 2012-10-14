@@ -1,4 +1,80 @@
-- 
+- fix the c code generator to pass variables by reference when they are passed to an 'out' parameter.
+
+- currently the way I calculate the wp of a call is not efficient because I hide the constants using 
+existential quantifiers. A much better way is to substitute them for their values.
+
+- Use the keyword 'var' to disambiguate the local variables from
+the assignment statement
+
+does not help us because the problem is the mix between a sequence
+of variable definitions and a sequence of statements (both are separated by ;)
+
+- Remember to ensure that output parameters are disjoint 
+
+when we pass variables as output parameters to a procedure the
+variables must be disjoint.
+
+- Extend the analyzer to check that the preconditions are satisfiable. 
+
+- Ensure that alloy stops when it detects a type error
+
+- Allocating objects
+
+  - every record is a sig that extends Object
+
+  - the variable extent keeps track of all the used objects
+
+  - the 'is new' statement binds a new object to a variable:
+
+     x : T
+   ; x is new
+
+  'is new' does two things: 
+
+    1. It binds x to  an object from Object - extent  
+    2. It sets extent to extent + x
+
+  the semantics of is new is as follows:
+
+  { some T - extent and extent = E }
+    x is new
+  { x in T - extent and extent = E + x  }
+
+  with the side condition that x is a variable of type T and T is a record type.
+
+  the wp of 'is new' is based on the wp of a specification statement:
+
+
+  wp(x is new, P) = some (T - extent) and all x : T - extent | P[extent := extent + x])
+
+- Support transforming ASTs
+
+an AST is a tree whose nodes represent the abstract syntax of 
+a formal language.
+
+record Node {}
+
+record Skip extends Node {}
+
+record Seq extends Node {
+	first, second : Node
+}
+
+record Assign extends Node {
+	lvalue : Name,
+	rvalue : Expr
+}
+
+...
+
+this is easy to implement but currently the generated alloy model is
+different than a model that we would create by hand for the purpose
+of developing the theory of ASTs.
+
+proc swap[x,y : out int]
+	{ x = X and y = Y }
+; x,y := y,x
+	{ x = Y and y = X }
 
 - Support local variables at the beginning of a procedure.
 
@@ -45,6 +121,11 @@ no, that won't do because we cannot support such a specification
 in a finite model. there is always the chance that we will run out
 of memory.
 
+<<<<<<< HEAD:todo
+=======
+- make 'sum' a term
+
+>>>>>>> 04f4318bc17f2c7bea7491ee6735124c31d2742e:todo
 - prove that wpca is correct:
   - prove that it calculates correctly the weakest precondition
   - prove that every well typed program generates a valid C program
@@ -725,7 +806,8 @@ of type nat.
 
 - when an array appears in the code it must be inside an array reference.
 - when an array appears in a spec it does not have this limitation.
-- each reference to the array generates a proof obligation to ensure that the reference is within the array's bounds.
+- each reference to the array generates a proof obligation to ensure
+that the reference is within the array's bounds.
 
 for example, the code:
 
@@ -738,7 +820,9 @@ generates two proof obligations:
 0 <= i and i < N
 0 <= i+j and i+j < N
 
-- the relational meaning of an array expression is a relational join. we do not have to change the syntax as the meaning of A[i] in Alloy is precisely what we need.
+- the relational meaning of an array expression is a relational join. we
+do not have to change the syntax as the meaning of A[i] in Alloy is
+precisely what we need.
 
 3. array assignment:
 
@@ -802,12 +886,15 @@ currently we identify the different kinds of variables in an ad-hoc manner.
 
 - create a java module 
 
-- we need to deal with counterexamples that occur because of overflows. when alloy's latest version comes out we can use the 'no overflow' feature. should we do something else in the meantime?
+- we need to deal with counterexamples that occur because of
+overflows. when alloy's latest version comes out we can use the 'no
+overflow' feature. should we do something else in the meantime?
 - should we check for a particular alloy version?
 - how can we translate alloy's solution to a test case? 
 this of course depends on the platform. 
 
-- display the result of analysis in a way that is meaningful to the author of the program.
+- display the result of analysis in a way that is meaningful to the
+author of the program.
 
 this problem requires a deeper analysis than I have previously thought. 
 
@@ -824,9 +911,12 @@ Done
 
   - quantifiers can appear only in assertions
 
-  - we must change the substitution algorithm to avoid capturing free variables and to generate unique names that are easy to relate to the original names.
+  - we must change the substitution algorithm to avoid capturing free
+  variables and to generate unique names that are easy to relate to the
+  original names.
 
-    alternatively we can flag this as an error and ask the progammer to give diffferent names to her local variables.
+    alternatively we can flag this as an error and ask the progammer to
+    give diffferent names to her local variables.
 
 - change the configuration file syntax to support strings with space 
   this requires start codes but they work only with a monad lexer. 
@@ -837,8 +927,9 @@ Done
 
 - create a separate assertion for each code segment. 
 
-we may name the assertions according to the line number in which the code segment begins
-we can keep the line number of each statement in the corresponding node.
+we may name the assertions according to the line number in which the
+code segment begins we can keep the line number of each statement in
+the corresponding node.
 
 - activate alloy from wpca
 
@@ -859,7 +950,8 @@ the general architecture is a central repository (the ast) on which various tool
    second layer: the weakest precondition calculator
    third (highest) layer: generating the alloy code, invoking the analyzer and reporting the results.
 
-- separate the alloy checks according to the code segments. this way it will be easier to understand which part of the program is incorrect
+- separate the alloy checks according to the code segments. this way it
+will be easier to understand which part of the program is incorrect
 
 we can use the theorem 
 

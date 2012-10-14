@@ -7,7 +7,6 @@ import Loc
 type Oblig = (AST, [Loc], String)
 
 name (Node (_, String n) []) = n
-name (Node (_, StateVar n) []) = n
 guard (Node (_,List) [g,s]) = g 
 tidy (Node (_,List) [g,s]) = (g,s)
 npos = fst . rootLabel 
@@ -67,13 +66,13 @@ assigned expression.
 -}
 
 collect :: [(AST,AST)] -> Env
-collect bs = simple ++ [ (n, (stateVar n) `update` expr) | (n,expr) <- reduce arrays ]
+collect bs = simple ++ [ (n, (string n) `update` expr) | (n,expr) <- reduce arrays ]
   where (simple,arrays) = separate bs
 
 separate :: [(AST,AST)] -> (Env, Env)
 separate = foldr f ([],[])
-  where f (Node (pos, StateVar n) [], expr) (simple,arrays) = ((n,expr):simple,arrays)
-        f (Node (pos, Join) [index, Node (_, StateVar n) []], expr) (simple,arrays) = (simple, (n, pair index expr):arrays)
+  where f (Node (pos, String n) [], expr) (simple,arrays) = ((n,expr):simple,arrays)
+        f (Node (pos, Join) [index, Node (_, String n) []], expr) (simple,arrays) = (simple, (n, pair index expr):arrays)
         f n _ = error ("Invalid L-value: " ++ (show n))
 
 reduce :: Env -> Env
@@ -91,17 +90,31 @@ replace ((n,x):assoc) m y =
   else 
     (n,x):(replace assoc m y)
 
-wpx :: AST -> [Oblig] -> [Oblig]
-wpx (Node (_,Assign) [Node (_,List) ns, Node (_,List) es]) post = 
+wpx :: Env -> AST -> [Oblig] -> [Oblig]
+wpx procs (Node (_,Assign) [Node (_,List) ns, Node (_,List) es]) post = 
   [ (subst [] (collect (zip ns es)) expr, path, goal) | (expr,path,goal) <- post ]
 
-wpx (Node (_,Skip) []) post = post
-wpx (Node (pos,Assert) [p]) post = (p,[pos],"satisfy the assertion"):post
-wpx (Node (_,Seq) [x,y]) post = wpx x ((wpx y) post)
+{-
 
-wpx (Node (pos,Cond) gs) post = ifdomain : guards 
+wp (x is new T) P = some (T - extent) and all x : T - extent | P[extent := extent + x])
+
+-}
+
+-- because we quantify over state variables we must first replace every occurence of the state
+-- variable with a plain (string) variable.
+
+wpx procs (Node (_,Alloc name) [typ]) post = [ (f p, path, goal) | (p, path, goal) <- post ]
+  where f p = (someSet fresh) `conj` (AST.all name fresh (subst [] [(name, string name), ("extent", (string "extent") `AST.union` (string name))] p))
+        fresh = typ `setDiff` (string "extent")
+
+
+wpx procs (Node (_,Skip) []) post = post
+wpx procs (Node (pos,Assert) [p]) post = (p,[pos],"satisfy the assertion"):post
+wpx procs (Node (_,Seq) [x,y]) post = wpx procs x ((wpx procs y) post)
+
+wpx procs (Node (pos,Cond) gs) post = ifdomain : guards 
   where ifdomain = (foldr disj false (map guard gs), [pos], "satisfy any of the guards")
-        guards = [ (g `implies` p, (npos s):path, goal) |  (g,s) <- map tidy gs, (p, path, goal) <- wpx s post ]
+        guards = [ (g `implies` p, (npos s):path, goal) |  (g,s) <- map tidy gs, (p, path, goal) <- wpx procs s post ]
 
 {- 
 
@@ -169,34 +182,98 @@ predicate using a special 'closure' node.
 
 -}
 
-wpx (Node (pos,Loop) [inv, (Node (_,List) gs)]) post = establishInv : maintainInv ++ achieveGoals
+wpx procs (Node (pos,Loop) [inv, (Node (_,List) gs)]) post = establishInv : maintainInv ++ achieveGoals
   where establishInv = (inv, [], "establish the loop invariant at " ++ (show pos))
-        maintainInv = [ (close ((g `conj` inv) `implies` p), (npos g):path, goal) | (g,s) <- map tidy gs, (p,path,goal) <- wpx s [(inv, [], "maintain the loop invariant at " ++ (show pos))] ]
+        maintainInv = [ (close ((g `conj` inv) `implies` p), (npos g):path, goal) | (g,s) <- map tidy gs, (p,path,goal) <- wpx procs s [(inv, [], "maintain the loop invariant at " ++ (show pos))] ]
         achieveGoals = [(close (inv `conj` (foldr conj true [ AST.not g | (g,_) <- map tidy gs ]) `implies` p), pos:path, goal) | (p,path,goal) <- post ]
 
-{- The call
+{-
 
-subst bound new expr  
+Given a procedure f[params] {pre} {post})
+
+the call f[args] has the same wp as the sequence:
+
+params := args
+; (pre | out | post)
+; vs := out
+
+where out is the set of out parameters and vs is the set of args 
+that are passed to the out parameters (this set must consist of
+variables).
+
+wp (pre | out | post) P = some constants | pre and (all out | post => P)
+
+where constants are the constant variables that are defined implicitly
+in the precondition (an alternative is to avoid the existential quantifier
+by immediately substituting the constants by their variables).
+
+We create this program fragment as follows:
+
+1. To generate the first assignment we use the function assignToParams
+that takes the parameters of the procedure and the arguments of the call
+and returns the appropriate assignment statement.
+
+2. To generate the specification statement and the final assignment we
+use the functions filterOutParams and filterOutVars to extract the names
+of the output parameters from params and to extract the output variables
+from args. 
+
+-}
+ 
+wpx procs (Node (_,Call name) args) obligs =
+	case (lookup name procs) of
+		(Just proc) -> wpxCall procs proc args obligs
+		Nothing -> error ("No such procedure: " ++ name)
+
+wpx procs (Node (_, SpecStmt) [pre, constants, frame, post]) obligs =
+	[ (quantifySome constants (pre `conj` quantifyAll frame (post `implies` p)), path, goal) | (p,path,goal) <- obligs ]
+
+quantifyAll decls pred = case decls of 
+				(Node (_,List) []) -> error "Invalid procedure definition (empty frame)."
+				_ -> Node (startLoc, Quantifier All) [decls, pred]
+
+quantifySome decls pred = case decls of 
+				(Node (_,List) []) -> pred
+				_ -> Node (startLoc, Quantifier Some) [decls, pred]
+
+wpxCall procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args obligs =
+	wpx procs (assignToParams `wseq` specStmt `wseq` assignToVars) obligs 
+  where assignToParams = Node (startLoc, Assign) [getNames params, Node (startLoc, List) args]
+        specStmt = Node (startLoc, SpecStmt) [pre, constants, filterOutParams params, post]
+	assignToVars = Node (startLoc, Assign) [filterOutVars args, getNames (filterOutParams params)]
+
+getNames :: AST -> AST
+getNames decls = Node (startLoc,List) [ string name | (name,_) <- (declsToList (subForest decls)) ]
+
+filterOutParams :: AST -> AST
+filterOutParams = Node (startLoc, List) . foldr f [] . subForest
+  where f d rest = case d of 
+			(Node (_,Declaration) [_, Node (_,Output) _]) -> d:rest
+			_ -> rest
+
+filterOutVars :: [AST] -> AST
+filterOutVars = Node (startLoc, List) . foldr f []
+  where f e rest = case e of 
+			(Node (_, String _) []) -> e:rest
+			_ -> rest
+
+{- subst bound new expr  
 
 substitutes all the free occurrences of state variables in 
 expr that have a binding in new by their binding in new.
 
-substitution affects only state variables because we can only 
-assign to state variables. 
-
 -}
- 
 subst :: [String] -> Env -> AST -> AST
 
-subst bound env (Node (p,StateVar n) []) = 
+subst bound env (Node (p,String n) []) = 
   case (elemIndex n bound) of  
     Nothing -> case (lookup n env) of 
                 (Just e) -> let captured = (nub bound) `intersect` (free [] e)
                                in case captured of 
                                    [] -> e
                                    _ -> error ("captured: " ++ (show captured))
-                Nothing -> Node (p, StateVar n) []
-    (Just _) -> Node (p, StateVar n) []
+                Nothing -> Node (p, String n) []
+    (Just _) -> Node (p, String n) []
 
 subst bound env (Node (p, Quantifier q) [decls, body]) = 
   substQuantifier p q bound env decls body
@@ -206,13 +283,11 @@ subst bound env (Node n ns) = Node n (map (subst bound env) ns)
 substQuantifier pos kind bound env decls body =
   Node (pos, Quantifier kind) [newDecls, newBody]
   where newBody = subst ((declNames decls)++bound) env body
-        newDecls = Node (pos, Locals) [ Node (p, Declaration) [ns, subst bound env t] | (Node (p, Declaration) [ns, t]) <- (subForest decls) ]
+        newDecls = Node (pos, List) [ Node (p, Declaration) [ns, subst bound env t] | (Node (p, Declaration) [ns, t]) <- (subForest decls) ]
 
 free :: [String] -> AST -> [String]
 
 free bound (Node (_,String n) []) = freeVar bound n
-free bound (Node (_,StateVar n) []) = freeVar bound n
-free bound (Node (_,ConstVar n) []) = freeVar bound n
 free bound (Node (_, Quantifier _) [decls,body]) = freeQuantifier bound decls body
 free bound (Node _ ns) = foldr List.union [] (map (free bound) ns)
 

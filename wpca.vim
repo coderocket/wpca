@@ -14,7 +14,7 @@ syn keyword     wpcaConditional	if fi
 syn keyword     wpcaRepeat     	do od keeping
 syn keyword     wpcaType     	int nat array of 
 syn keyword     wpcaQuantifier 	all no some sum 
-syn keyword     wpcaOperator 	and or not
+syn keyword     wpcaOperator 	and or not is new
 
 
 hi def link 	wpcaStatement          	Statement

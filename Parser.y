@@ -22,6 +22,8 @@ import Loc
 	'nat'	{ TokNatType $$ }
 	'array'	{ TokArray $$ }
 	'of'	{ TokOf $$ }
+	'is'	{ TokIs $$ }
+	'new'	{ TokNew $$ }
 	int	{ TokInt $$ }
 	name	{ TokName $$ }
 	'in'	{ TokIn $$ }
@@ -99,9 +101,9 @@ Theory :  { [] }
 
 Record : 'record' name '{' LocalsList '}' { Node ($1, Record (snd $2)) $4 }
 
-Proc : 'proc' name '[' Locals ']' Locals Pre ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$7,$9,$10] }
+Proc : 'proc' name '[' Locals ']' Locals Pre ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$6,$7,$9,$10] }
 
-Locals : LocalsList { Node (fst (rootLabel (head $1)), Locals) $1 }
+Locals : LocalsList { Node (fst (rootLabel (head $1)), List) (reverse $1) }
 
 LocalsList : { [] }
 	| NonEmptyList { $1 }
@@ -125,11 +127,17 @@ Seq : Stmt { $1 }
 Stmt : If { $1 }
     | Assign { $1 }
     | Assert { $1 }
+    | Allocate { $1 }
     | Do { $1 }
+    | Call { $1 }
     | 'skip' { Node ($1,Skip) [] }
+
+Allocate : name 'is' 'new' name { Node ($2,Alloc (snd $1)) [ Node(fst $4, String (snd $4)) []] }
 
 Do : DoOk { $1 }
 	| DoError { $1 }
+
+Call : Variable '[' TermList ']' { Node ($2, Call (getName $1)) (reverse $3) }
 
 Assert : '{' Expr '}' { Node ($1, Assert) [$2] }
 
@@ -195,21 +203,19 @@ Term: '-' Term { Node ($1, Neg) [$2] }
 	| 'sum' Locals '|' Term %prec SUM { Node ($1, Quantifier Sum) [$2,$4] } 
 	| Factor { $1 }
 
-Factor: Type { $1 }
-	| int { Node (fst $1, Int (snd $1)) [] }
+Factor:  int { Node (fst $1, Int (snd $1)) [] }
 	| 'true' { Node ($1, AST.True) [] }
 	| 'false' { Node ($1, AST.False) [] }
 	| '(' Expr ')' { $2 }
-	| Factor '[' TermList ']' { Node ($2, ArrayJoin) ($3++[$1]) }
-
-Type : BasicType { $1 }
+	| Variable '[' TermList ']' { Node ($2, ArrayJoin) ($3++[$1]) }
+	| Variable { $1 }
 	| CompoundType { $1 }
 
-BasicType : 'int'  { Node ($1, Type "int") [] }
+Variable :  'int'  { Node ($1, Type "int") [] }
 	| 'nat'  { Node ($1, Type "nat") [] }
 	| name { Node (fst $1, String (snd $1)) [] }
 
-CompoundType : 'array' 'of' name BasicType { Node ($1, ArrayType (snd $3) (getName (snd (rootLabel $4)))) [] }
+CompoundType : 'array' 'of' name Variable { Node ($1, ArrayType (snd $3) (getName  $4)) [] }
 
 TermList : Term { [$1] }
 	| TermList ',' Term { $3:$1 }
@@ -225,9 +231,9 @@ makeAssign (names,exprs) =
   Node (p ,Assign) [Node (p, List) names, Node (p, List) exprs]  
   where p = fst (rootLabel (head names)) 
 
-getName :: Kind -> String
-getName (Type s) = s
-getName (String s) = s
+getName :: AST -> String
+getName (Node (_, Type s) _) = s
+getName (Node (_, String s) _) = s
 
 annotateWithPassStyle :: PassStyle -> AST -> AST
 annotateWithPassStyle PassIn n = n
