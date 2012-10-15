@@ -236,11 +236,10 @@ quantifySome decls pred = case decls of
 				(Node (_,List) []) -> pred
 				_ -> Node (startLoc, Quantifier Some) [decls, pred]
 
-wpxCall procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args obligs =
-	wpx procs (assignToParams `wseq` specStmt `wseq` assignToVars) obligs 
+wpxCall procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args obligs = wpx procs (assignToParams `wseq` specStmt `wseq` assignToVars) obligs 
   where assignToParams = Node (startLoc, Assign) [getNames params, Node (startLoc, List) args]
         specStmt = Node (startLoc, SpecStmt) [pre, constants, filterOutParams params, post]
-	assignToVars = Node (startLoc, Assign) [filterOutVars args, getNames (filterOutParams params)]
+	assignToVars = Node (startLoc, Assign) [filterOutVars (zip (subForest params) args), getNames (filterOutParams params)]
 
 getNames :: AST -> AST
 getNames decls = Node (startLoc,List) [ string name | (name,_) <- (declsToList (subForest decls)) ]
@@ -251,12 +250,15 @@ filterOutParams = Node (startLoc, List) . foldr f [] . subForest
 			(Node (_,Declaration) [_, Node (_,Output) _]) -> d:rest
 			_ -> rest
 
-filterOutVars :: [AST] -> AST
+filterOutVars :: [(AST,AST)] -> AST
 filterOutVars = Node (startLoc, List) . foldr f []
-  where f e rest = case e of 
-			(Node (_, String _) []) -> e:rest
-			_ -> rest
-
+  where f (p,e) rest = 
+	 case e of 
+	 (Node (_, String _) []) -> 
+		 case p of 
+		 (Node (_,Declaration) [_, Node (_,Output) _]) -> e:rest
+		 _ -> rest
+	 _ -> rest
 {- subst bound new expr  
 
 substitutes all the free occurrences of state variables in 

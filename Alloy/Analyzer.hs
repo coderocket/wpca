@@ -21,25 +21,27 @@ procedure definitions. The record definitions are global to all the
 procedures but the analysis of each procedure is independent of the
 other procedures. Therefore, to analyze a WPCA program we analyze 
 each procedure independently, passing it the global set of record
-definitions.
+definitions. Now that we support calling procedures we must also pass
+an environment of procedures to the analysis procedure. In addition,
+we must pre-process the procedures to ensure that we can use their
+specifications when calculating the obligations of a procedure call.
 
 -}
 
 work :: Config -> AST -> IO ()
-work cfg (Node (_,Program) [Node (_,List) records, Node (_,List) procs, Node (_,List) theory]) = 
-  loop eprocs
-  where loop [] = return ()
-        loop (p:ps) = do analyzeProc cfg env theory records p 
-                         loop ps
-	eprocs = extractConstants records procs
-	env = makeProcEnv eprocs
+work config (Node (_,Program) [Node (_,List) records, Node (_,List) procs, Node (_,List) theory]) = analyze config records (preProcess records procs) theory
 
-extractConstants :: [AST] -> [AST] -> [AST]
+preProcess :: [AST] -> [AST] -> [AST]
 
-extractConstants records procs = 
-  [ Node (p, Proc name) [params, locals, f params pre, pre, body, post] | 
-           (Node (p, Proc name) [params, locals, pre, body, post]) <- procs ] 
-  where f params pre = Node (startLoc, List) (cvars (getStateEnv records (subForest params)) pre)
+preProcess records procs = [ preProcessProc records $ extractConstants records p | p <- procs ]
+
+preProcessProc records proc = tidyOps types $ tidyJoins proc
+  where types = (getRecordTypes records) ++ (getStateVars records proc)
+
+extractConstants :: [AST] -> AST -> AST
+
+extractConstants records (Node (p, Proc name) [params, locals, pre, program, post]) = Node (p, Proc name) [params, locals, constants, pre, program, post]
+  where constants = Node (startLoc, List) (cvars (getStateEnv records (subForest params)) pre)
 
 cvars :: Env -> AST -> [AST]
 
@@ -59,11 +61,17 @@ cvars types (Node (_, Conj) [x, y]) = xtypes ++ (cvars ((declsToList xtypes)++ty
 
 cvars types _ = []
 
-analyzeProc :: Config -> Env -> [AST] -> [AST]-> AST -> IO ()
-analyzeProc cfg procs theory records (Node (p,Proc name) [params,locals,constants,pre,body,post]) = 
-  do [analysisStem] <- lookupM "alloy.analysisfile" cfg 
-     [outputStem] <- lookupM "alloy.analysisoutput" cfg
-     analyzeSpec (("alloy.analysisfile", [name ++ "." ++ analysisStem]):("alloy.analysisoutput", [name ++ "." ++ outputStem]):cfg) procs theory records (Node (p, Spec) [append params locals, constants, pre,body,post])
+getStateVars :: [AST] -> AST -> Env
+
+getStateVars records (Node (_,Proc _) [params, locals, constants, pre, program, post]) = 
+  builtInStateVars ++ getStateEnv records (subForest (append params locals))
+  where builtInStateVars = [("extent", setType "Object")]
+
+analyze :: Config -> [AST] -> [AST] -> [AST] -> IO ()
+analyze config records procs theory = loop procs 
+  where loop [] = return ()
+        loop (p:ps) = do analyzeProc config env theory records p 
+        env = makeProcEnv procs
 
 {-
 
@@ -73,20 +81,26 @@ we generate a report based on the results of the analysis.
 
 -}
 
-analyzeSpec :: Config -> Env -> [AST] -> [AST] -> AST -> IO ()
+analyzeProc :: Config -> Env -> [AST] -> [AST]-> AST -> IO ()
 
-analyzeSpec cfg procs theory records code = 
-  do (obligs,types) <- generate cfg procs theory records code
-     analyse cfg 
-     report types cfg obligs
+analyzeProc cfg procs theory records proc =
+  do (obligs,types) <- generate procConfig procs theory records proc
+     analyse procConfig 
+     report types procConfig obligs
+  where procConfig = makeFileNames (getProcName proc) cfg
+
+makeFileNames :: String -> Config -> Config
+
+makeFileNames name config = 
+  do [analysisStem] <- lookupM "alloy.analysisfile" config 
+     [outputStem] <- lookupM "alloy.analysisoutput" config
+     (("alloy.analysisfile", [name ++ "." ++ analysisStem]):("alloy.analysisoutput", [name ++ "." ++ outputStem]):config) 
 
 {- To generate the model we follow these steps:
 
-1. augment every identifier with information about its nature 
-    (state variable, const variable or quantifier variable) 
-2. extract the state variables, the constants and the global constraints
-3. calculate the proof obligations 
-4. Retrieve the name of the analysis file from the configuration and
+1. extract the state variables, the constants and the global constraints
+2. calculate the proof obligations 
+3. Retrieve the name of the analysis file from the configuration and
    write the model to the analysis file.
 
 Note that we return the proof obligations because we need them to generate
@@ -96,13 +110,12 @@ the report.
 
 generate :: Config -> Env -> [AST] -> [AST] -> AST -> IO ([(String,Oblig)], Env)
 
-generate cfg procs theory records code = 
-  do putStrLn "Generating model..." 
-     stateVars <- return $ getStateVars records code
-     constants <- return $ getConstants code 
-     acode <- augment records (tidyOps ((getRecordTypes records) ++ stateVars) (tidyJoins code))
-     obligs <- calcObligs procs acode
-     consistencyCheck <- generateConsistencyCheck acode
+generate cfg procs theory records proc = 
+  do putStrLn $ "Generating model for procedure " ++ (getProcName proc) ++ "..." 
+     stateVars <- return $ getStateVars records proc
+     constants <- return $ getConstants proc 
+     obligs <- calcObligs procs proc
+     consistencyCheck <- generateConsistencyCheck proc
      [analysisFile] <- lookupM "alloy.analysisfile" cfg
      libraries <- lookupM "alloy.analysislibraries" cfg
      putStrLn ("... There are " ++ (show (length obligs)) ++ " proof obligations. Writing analysis file to " ++ analysisFile)
@@ -110,7 +123,7 @@ generate cfg procs theory records code =
      return (obligs, stateVars ++ constants)
 
 generateConsistencyCheck :: AST -> IO String
-generateConsistencyCheck (Node (p,Spec) [locals,constants,pre,body,post]) = return ""
+generateConsistencyCheck (Node (p,Proc _) [params,locals,constants,pre,body,post]) = return ""
 
 -- Alloy does not care if the join is due to an array or due to a relation
 
@@ -140,11 +153,11 @@ tidyOpsDecls :: Env -> [AST] -> AST
 
 tidyOpsDecls env decls = Node (startLoc, List) [ Node (startLoc, Declaration) [ns, tidyOps env t] | (Node (_,Declaration) [ns,t]) <- decls ]
 
-
+{-
 augment :: [AST] -> AST -> IO (AST)
 
-augment records code@(Node (pos,Spec) [locals, constants, pre, program, post]) = 
-  return $ Node (pos,Spec) [locals, constants, f [] initEnv pre, f [] initEnv program, f [] initEnv post] 
+augment records code@(Node (pos,Proc name) [params, locals, constants, pre, program, post]) = 
+  return $ Node (pos,Proc name) [params, locals, constants, f [] initEnv pre, f [] initEnv program, f [] initEnv post] 
   where f bound env (Node (pos, String n) []) = 
           case (elemIndex n bound) of 
            Nothing -> case (lookup n env) of
@@ -159,17 +172,11 @@ augment records code@(Node (pos,Spec) [locals, constants, pre, program, post]) =
         augmentQuantifier bound env pos kind decls body =
           Node (pos, Quantifier kind) [Node (pos, List) (augmentDecls bound env (subForest decls)), f ((declNames decls)++bound) env body]
         augmentDecls bound env ds = [ Node (pos, Declaration) [ns, f bound env t] | (Node (pos,Declaration) [ns,t]) <- ds ]
-  
+-}  
+
 getConstants :: AST -> Env
 
-getConstants (Node (_,Spec) [locals, Node (_,List) constants, pre, program, post]) = 
-	declsToList constants
-
-getStateVars :: [AST] -> AST -> Env
-
-getStateVars records (Node (_,Spec) [locals, constants, pre, program, post]) = 
-  builtInStateVars ++ getStateEnv records (subForest locals)
-  where builtInStateVars = [("extent", setType "Object")]
+getConstants (Node (_,Proc _) [params, locals, Node (_,List) constants, pre, program, post]) = declsToList constants
 
 getStateEnv :: [AST] -> [AST] -> Env
 getStateEnv records locals = 
@@ -192,7 +199,7 @@ getRecordTypes = map getRecordType
 getRecordType :: AST -> (String,AST)
 getRecordType (Node (_, Record name) _) = (name, setType name)
 
-calcObligs procs (Node (_,Spec) [locals, constants, pre, program, post]) = 
+calcObligs procs (Node (_,Proc _) [params, locals, constants, pre, program, post]) = 
  return $ zip names [ (pre `implies` wp,path,goal) | (wp,path,goal) <- obligations]
  where names = ["test"++(show i) | i <- [1..] ] 
        obligations = wpx procs program [(post,[],"satisfy the postcondition")]
@@ -299,7 +306,7 @@ showA = foldRose f
         f (_, SetDiff) [x,y] = "(" ++ x ++ " - " ++ y  ++ ")"
         f (_, Update) [x,y] = "(" ++ x ++ " ++ " ++ y  ++ ")"
 	f (_, Closure) [x] = x
-	f other ns = error ("Internal error: Don't know how to show " ++ (show other))
+	f other ns = error ("Internal error: Don't know how to show " ++ (show other) ++ " args: " ++ (showNames ns))
 
 showRel = foldr f ""
   where f x [] = x

@@ -115,5 +115,7 @@ string s = Node (startLoc, String s) []
 
 makeProcEnv :: [AST] -> Env
 makeProcEnv procs = [ (getProcName p, p) | p <- procs ]
-  where getProcName (Node (_,Proc name) _) = name
+
+getProcName :: AST -> String
+getProcName (Node (_,Proc name) _) = name
 
