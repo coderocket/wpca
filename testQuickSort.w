@@ -6,7 +6,7 @@ proc Partition[i : out int; a : array of N int ; N : nat; b,e:int]
 
 proc Sort[f : out array of M int; M : nat; x,y : int] 
   k : int
-	{ f = F }
+	{ f = F and 0 <= x <= y and y <= M }
 ; if y - x <= 1 -> skip
   [] y - x  > 1 -> Partition[k,f,M,x,y] ; Sort[f,M,x,k] ; Sort[f,M,k,y]
   fi
