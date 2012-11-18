@@ -101,6 +101,6 @@ public final class AlloyCmdLine {
             }
         }
 	if (!foundCounterExamples)
-		System.out.println("Found no counterexamples, program may be correct.");
+		System.out.println("Found no counterexamples, procedure may be correct.");
     }
 }

@@ -81,7 +81,7 @@ prepareParam (name,typ) = (showType typ) ++ " " ++ name
 -- TODO: add the pre and post conditions as documentation above the prototype
  
 prepareSource :: String -> AST -> String
-prepareSource hfile (Node (_,Program) [Node (_,List) records, Node (_,List) procs, theory]) = header ++ prepareFunctions fieldTypes procs ++ footer
+prepareSource hfile (Node (_,Program) [Node (_,List) records, Node (_,List) procs, theory]) = header ++ prepareFunctions (fieldTypes ++ (makeProcEnv procs)) procs ++ footer
   where header = "#include <stddef.h>\n#include \"" ++ hfile ++ "\"\n" 
         footer = ""
 	fieldTypes = getRecordVars records
@@ -98,15 +98,15 @@ getFieldVar left (relName, right) =
   (relName, Node (startLoc,Product) [ Node (startLoc,String left) [], right])
 
 prepareFunctions :: Env -> [AST] -> String
-prepareFunctions fieldTypes = foldr (++) "" . map (prepareFunction fieldTypes)
+prepareFunctions types = foldr (++) "" . map (prepareFunction types)
 
 prepareFunction :: Env -> AST -> String
-prepareFunction fieldTypes proc =
-  preparePrototype proc ++ " {\n" ++ prepareBody fieldTypes proc ++ "}\n"
+prepareFunction types proc =
+  preparePrototype proc ++ " {\n" ++ prepareBody types proc ++ "}\n"
 
 {-
 To prepare the body of a procedure we first normalize(see below) it 
-and then annotate its variables so that we will know their type when
+and then annotate its variables so that we will know their type 
 without having to lookup an environment. Finally we convert the 
 annotated program into its C equivalent program.
 
@@ -122,22 +122,40 @@ simple if statements
 -}
 
 prepareBody :: Env -> AST -> String
-prepareBody fieldTypes = showCode . annotate . (normalize fieldTypes)
+prepareBody types = showCode . annotate . (normalize types)
 
 normalize :: Env -> AST -> (Env,AST)
-normalize fieldTypes (Node (_,Proc name) [Node (_,List) params, locals, pre,body,post]) = 
-  (env, (separateDecls (subForest locals)) `wseq` tmps `wseq` normalized)
-  where env = fieldTypes ++ (declsToList (subForest locals)) ++ (declsToList params)
+normalize types (Node (_,Proc name) [Node (_,List) params, locals, pre,body,post]) = (env, (separateDecls (subForest locals)) `wseq` tmps `wseq` normalized)
+  where env = types ++ (declsToList (subForest locals)) ++ (declsToList params)
         (tmps,normalized) = transform env body
 
 annotate :: (Env, AST) -> AST
-annotate (env,body) = foldRose f body
+annotate = annotateVars 
+
+annotateVars :: (Env, AST) -> AST
+annotateVars (env,body) = foldRose f body
   where f (pos, String n) [] = 
           case (lookup n env) of
             (Just (Node (_,Output) [t])) -> Node (pos, OutputVar) [Node(pos,String n)[]]
             (Just _) -> Node (pos, String n) []
             Nothing -> Node (pos, String n) []
+  	f(pos, Call n) args = annotateCall n env args
         f k ns = Node k ns
+
+annotateCall :: String -> Env -> [AST] -> AST
+annotateCall procName env args = 
+	case lookup procName env of
+		(Just (Node (_,Proc _) [Node (_,List) params,_,_,_,_])) -> Node (startLoc, Call procName) (annotateArgs (declsToList params) args)
+		Nothing -> error ("No such procedure: " ++ procName)
+
+annotateArgs :: Env -> [AST] -> [AST]
+annotateArgs params args = [ annotateArg paramType arg | ((_,paramType),arg) <- zip params args ]
+
+annotateArg :: AST -> AST -> AST
+annotateArg (Node (_,Output) [t]) (Node (_,String nv) []) = Node (startLoc, PassByRef nv) []
+annotateArg (Node (_,Output) _) expr = 
+	error ((show (fst (rootLabel expr))) ++ ": Cannot pass an expression by value")
+annotateArg param expr = expr
 
 showCode :: AST -> String
 
@@ -154,6 +172,7 @@ showCode = foldRose f
         f (_,RecordType n) [] = "struct " ++ n  ++ "* "
 	f (_,Output) [x] = x ++ "*"
         f (_,OutputVar) [x] = "*" ++ x 
+        f (_,PassByRef n) [] = "&" ++ n
         f (_,Int x) [] = (show x)
         f (_,Neg) [x] = "-" ++ x
         f (_,Plus) [x,y] = "(" ++ x ++ "+" ++ y ++ ")"

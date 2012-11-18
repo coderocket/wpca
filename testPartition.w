@@ -1,4 +1,4 @@
-proc Partition[N : nat ; a : array of N int ; i : nat]
+proc Partition[a : array of N int ; N : nat; i : out nat]
   l,u,pivot : int
 	{ a = A and N > 1 }
 ; pivot := a[0]

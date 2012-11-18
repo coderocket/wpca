@@ -103,7 +103,7 @@ Record : 'record' name '{' LocalsList '}' { Node ($1, Record (snd $2)) $4 }
 
 Proc : 'proc' name '[' Locals ']' Locals Pre ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$6,$7,$9,$10] }
 
-Locals : LocalsList { Node (fst (rootLabel (head $1)), List) $1 }
+Locals : LocalsList { Node (fst (rootLabel (head $1)), List) (reverse $1) }
 
 LocalsList : { [] }
 	| NonEmptyList { $1 }
@@ -170,8 +170,7 @@ Expr : Expr 'and' Expr { Node ($2,Conj) [$1, $3] }
 	| Comprehension { $1 }
 	| Relat { $1 }
 
-Comprehension : 'sum' Locals '|' Expr %prec SUM { Node ($1, Quantifier Sum) [$2,$4] } 
-	| 'all' Locals '|' Expr %prec ALL { Node ($1, Quantifier All) [$2,$4] } 
+Comprehension : 'all' Locals '|' Expr %prec ALL { Node ($1, Quantifier All) [$2,$4] } 
 	| 'no' Locals '|' Expr %prec ALL { Node ($1, Quantifier No) [$2,$4] } 
 	| 'some' Locals '|' Expr %prec ALL { Node ($1, Quantifier Some) [$2,$4] }
 
@@ -201,6 +200,7 @@ Term: '-' Term { Node ($1, Neg) [$2] }
 	| Term '..' Term { Node ($2, Range) [$1,$3] }
 	| Term '.' Term { Node ($2, Join) [$1,$3] }
 	| Term '<->' Term { Node ($2, Product) [$1,$3] }
+	| 'sum' Locals '|' Term %prec SUM { Node ($1, Quantifier Sum) [$2,$4] } 
 	| Factor { $1 }
 
 Factor:  int { Node (fst $1, Int (snd $1)) [] }

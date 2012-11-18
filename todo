@@ -178,8 +178,11 @@ no, that won't do because we cannot support such a specification
 in a finite model. there is always the chance that we will run out
 of memory.
 
+<<<<<<< HEAD:todo
+=======
 - make 'sum' a term
 
+>>>>>>> 04f4318bc17f2c7bea7491ee6735124c31d2742e:todo
 - prove that wpca is correct:
   - prove that it calculates correctly the weakest precondition
   - prove that every well typed program generates a valid C program
@@ -665,6 +668,8 @@ we need to display the following information:
 - what are the values that cause the program to follow this path? 
 
 Done
+
+- make 'sum' a term
 
 - support record fields
 
