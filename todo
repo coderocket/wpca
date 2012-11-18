@@ -1,3 +1,60 @@
+- Instead of moving quantifiers of higher order variables to the top we can
+use the following equivalence
+
+all s : S | P [x := s.x] 
+<=>
+all x : T | P
+
+provided that s is not free in P
+
+where State is the signature
+
+sig S {
+  x : T
+}
+
+this is not quite correct though because x is bound in the original
+predicate but free in the new predicate.
+
+for example
+
+wp (x = X and y = Y | x,y | x = Y and y = X) x < y 
+= x = X and y = Y and all x,y | x = Y and y = X => 
+
+- given the function f :: a -> b how can we use it to build F :: [a] -> [b]
+
+F = foldr (++) [] . map f 
+
+for example
+
+wp skip p = p
+wp s1 ; s2 p = wp s1 (wp s2 p)
+wp x := e p = p[x := e]
+wp if g1 -> s1 [] ... [] gn -> sn fi p = (g1 => wp s1 p) and  ... and (gn => wp sn p)
+wp s1 || s2 p = ?
+
+WP s = foldr (++) [] . map (wp s)
+
+this won't do because parallel composition returns a list (the conjuncts) so we have to settle for:
+
+wp :: Statement -> [Predicate]
+
+wp skip p = [p]
+wp s1 ; s2 p = wp s1 (wp s2 p)
+wp x := e p = [ p[x := e] ]
+wp if g1 -> s1 [] ... [] gn -> sn fi p = [g1 => wp s1 p, ..., gn => wp sn p]
+wp (pre | frame | post) p = pre and all frame | post => p
+
+we formulate the wp of a loop using the spec statement:
+
+
+in addition, to each statement we calculate sidec --- a 'side
+condition' --- a set of proof obligations that must be checked to
+ensure that the statement is meaningful. for example
+
+sidec if ... fi = g1 or g2 or ... gn
+
+
 - fix the c code generator to pass variables by reference when they are passed to an 'out' parameter.
 
 - currently the way I calculate the wp of a call is not efficient because I hide the constants using 
