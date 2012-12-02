@@ -62,7 +62,7 @@ class Free a where
 instance Free Pred where
   free (RelOp _ es) = free es
   free (LogicOp _ ps) = free ps
-  free (Quantifier _ def p) = (free p \\ (map fst def)) ++ (free (map snd def))
+  free (Quantifier _ def p) = (free p \\ (map fst def)) `union` (free (map snd def))
 
 instance Free Expr where
   free (Var n) = [n]
