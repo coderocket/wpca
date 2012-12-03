@@ -199,12 +199,14 @@ params := args
 
 where out is the set of out parameters and vs is the set of args 
 that are passed to the out parameters (this set must consist of
-variables).
+variables). And provided that params do not appear in the code that
+calls the procedure (this can be ensured by subsituting params with 
+fresh names in pre and post). 
 
 wp (pre | out | post) P = some constants | pre and (all out | post => P)
 
 where constants are the constant variables that are defined implicitly
-in the precondition (an alternative is to avoid the existential quantifier
+in the precondition (an alternative is to avoid using the existential quantifier
 by immediately substituting the constants by their variables).
 
 We create this program fragment as follows:
@@ -226,7 +228,26 @@ wpx procs (Node (_,Call name) args) obligs =
 		Nothing -> error ("No such procedure: " ++ name)
 
 wpx procs (Node (_, SpecStmt) [pre, constants, frame, post]) obligs =
-	[ (quantifySome constants (pre `conj` quantifyAll frame (post `implies` p)), path, goal) | (p,path,goal) <- obligs ]
+	[ (quantifySome constants (pre `conj` quantifyState frame (post `implies` p)), path, goal) | (p,path,goal) <- obligs ]
+
+quantifyState decls pred = 
+  case decls of
+	(Node (_,List) []) -> error "Invalid procedure definition (empty frame)."
+	_ -> if fresh `elem` (free [] pred) 
+	     then error (show pred) 
+	     else AST.all fresh (string "STATE") (subst [] joins pred)
+  where joins = [ (name, Node (startLoc, Join) [string fresh, string ("STATE_" ++ name)]) | name <- names ]
+        names = map fst (declsToList (subForest decls))
+        fresh = genFresh "STATE_DUMMY" 0 (bound pred)
+
+-- note: we assume that the generated name could clash only with bound variables. a more robust 
+-- way is to ensure that the name does not clash with any variable.
+
+genFresh :: String -> Int -> [String] -> String
+genFresh name suffix bs = 
+  if (name ++ "_" ++ (show suffix)) `elem` bs
+  then genFresh name (suffix+1) bs
+  else name ++ "_" ++ (show suffix)
 
 quantifyAll decls pred = case decls of 
 				(Node (_,List) []) -> error "Invalid procedure definition (empty frame)."
@@ -265,6 +286,7 @@ substitutes all the free occurrences of state variables in
 expr that have a binding in new by their binding in new.
 
 -}
+
 subst :: [String] -> Env -> AST -> AST
 
 subst bound env (Node (p,String n) []) = 
@@ -273,7 +295,7 @@ subst bound env (Node (p,String n) []) =
                 (Just e) -> let captured = (nub bound) `intersect` (free [] e)
                                in case captured of 
                                    [] -> e
-                                   _ -> error ("captured: " ++ (show captured))
+                                   _ -> error ("Can't substitute " ++ (show e) ++ "for " ++ n ++ " because " ++ (show bound) ++ " are bound in the expression but free in " ++ (show e))
                 Nothing -> Node (p, String n) []
     (Just _) -> Node (p, String n) []
 
@@ -300,6 +322,14 @@ freeVar bound n =
 
 freeQuantifier bound decls body =
   free ((declNames decls)++bound) body
+
+bound :: AST -> [String]
+
+bound (Node (_, Quantifier _) [decls,body]) = boundQuantifier decls body
+bound (Node _ ns) = foldr List.union [] (map bound ns)
+
+boundQuantifier decls body =
+  (declNames decls) `List.union` (bound body)
 
 declNames :: AST -> [String]
 declNames decls = map fst (declsToList (subForest decls))
