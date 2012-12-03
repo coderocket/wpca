@@ -101,7 +101,7 @@ Theory :  { [] }
 
 Record : 'record' name '{' LocalsList '}' { Node ($1, Record (snd $2)) $4 }
 
-Proc : 'proc' name '[' Locals ']' Locals Pre ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$6,$7,$9,$10] }
+Proc : 'proc' name '[' Locals ']' Pre Locals ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$7,$6,$9,$10] }
 
 Locals : LocalsList { Node (fst (rootLabel (head $1)), List) (reverse $1) }
 
@@ -109,9 +109,9 @@ LocalsList : { [] }
 	| NonEmptyList { $1 }
 
 NonEmptyList : Declaration { [$1] } 
-	| NonEmptyList ';' Declaration { $3:$1 }
+	| NonEmptyList ',' Declaration { $3:$1 }
 
-Declaration : Names ':' PassStyle Expr { Node ($2, Declaration) [Node ($2, List) (reverse $1), annotateWithPassStyle $3 $4] }
+Declaration : Names ':' PassStyle Term { Node ($2, Declaration) [Node ($2, List) (reverse $1), annotateWithPassStyle $3 $4] }
 
 Names : name { [Node (fst $1, String (snd $1)) [] ] }
 	| Names ',' name { (Node (fst $3, String (snd $3)) []):$1 }

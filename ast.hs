@@ -52,6 +52,7 @@ declaration name typ = Node (startLoc, Declaration) [list (string name), typ]
 
 append :: AST -> AST -> AST
 append (Node (p1,List) xs) (Node (p2,List) ys) = Node (p1,List) (xs++ys)
+append x y = error $ "can't append: " ++ (show x) ++ " to " ++ (show y)
 
 close :: AST -> AST
 

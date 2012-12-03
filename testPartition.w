@@ -1,6 +1,6 @@
-proc Partition[a : array of N int ; N : nat; i : out nat]
-  l,u,pivot : int
+proc Partition[a : array of N int, N : nat, i : out nat]
 	{ a = A and N > 1 }
+  l,u,pivot : int
 ; pivot := a[0]
 ; l,u := 1,N-1
 ; if a[N-1] < pivot -> a[0],a[N-1] := a[N-1],a[0]
