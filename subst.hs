@@ -18,7 +18,7 @@ data RelOpTag = In | Equal
 data QuantifierTag = All | Some
   deriving (Show)
 
-data LogicOpTag = Conj | Disj | Impl | Neg
+data LogicOpTag = Conj | Disj | Impl | Not
   deriving (Show)
 
 class Subst a where

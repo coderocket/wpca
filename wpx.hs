@@ -4,9 +4,9 @@ module WPX where
 import Subst
 import Data.List
 
-data Stmt = Skip | Assign Def | Comp Stmt Stmt | Cond [Guard] | Spec Pred Def Pred
+data Stmt = Skip | Assign Def | Comp Stmt Stmt | Cond [Guard] | Spec Pred Def Pred | Loop Pred Def [Guard]
 
-data Guard = Guard Pred Stmt
+data Guard = Guard { guard :: Pred , stmt :: Stmt }
 
 type Loc = Pred
 
@@ -22,7 +22,10 @@ instance WPX Stmt where
   wpx (Assign def) post = map (subst def) post
   wpx (Cond guards) post = foldr (++) [] [ wpx g post | g <- guards ]
   wpx (Spec pre frame post) post' = 
-    [LogicOp Conj [pre, Quantifier All frame (LogicOp Impl [post, p])] | p <- post'] 
+    [LogicOp Conj [pre, Quantifier All frame (post `implies` p)] | p <- post'] 
+    where implies p q = LogicOp Impl [p,q]
+  wpx (Loop inv frame guards) post = wpx (Spec inv frame (LogicOp Conj [inv, negate guards])) post 
+    where negate guards = LogicOp Not [LogicOp Disj (map guard guards)]
 
   ptree (Cond guards) path = foldr (++) [] [ ptree g path | g <- guards ]
   ptree (Comp s1 s2) path = ptree s1 (ptree s2 path)
