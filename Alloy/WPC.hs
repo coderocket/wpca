@@ -3,8 +3,9 @@ import List
 import Data.Tree
 import AST
 import Loc
+import Alloy.Show
 
-type Oblig = (AST, [Loc], String)
+type Oblig = (AST, [(Loc,String)], String)
 
 name (Node (_, String n) []) = n
 guard (Node (_,List) [g,s]) = g 
@@ -109,12 +110,12 @@ wpx procs (Node (_,Alloc name) [typ]) post = [ (f p, path, goal) | (p, path, goa
 
 
 wpx procs (Node (_,Skip) []) post = post
-wpx procs (Node (pos,Assert) [p]) post = (p,[pos],"satisfy the assertion"):post
+wpx procs (Node (pos,Assert) [p]) post = (p,[(pos,showA p)],"satisfy the assertion"):post
 wpx procs (Node (_,Seq) [x,y]) post = wpx procs x ((wpx procs y) post)
 
 wpx procs (Node (pos,Cond) gs) post = ifdomain : guards 
-  where ifdomain = (foldr disj false (map guard gs), [pos], "satisfy any of the guards")
-        guards = [ (g `implies` p, (npos s):path, goal) |  (g,s) <- map tidy gs, (p, path, goal) <- wpx procs s post ]
+  where ifdomain = (foldr disj false (map guard gs), [(pos,"if ... fi")], "satisfy any of the guards")
+        guards = [ (g `implies` p, (npos s, show g):path, goal) |  (g,s) <- map tidy gs, (p, path, goal) <- wpx procs s post ]
 
 {- 
 
@@ -183,9 +184,10 @@ predicate using a special 'closure' node.
 -}
 
 wpx procs (Node (pos,Loop) [inv, (Node (_,List) gs)]) post = establishInv : maintainInv ++ achieveGoals
-  where establishInv = (inv, [], "establish the loop invariant at " ++ (show pos))
-        maintainInv = [ (close ((g `conj` inv) `implies` p), (npos g):path, goal) | (g,s) <- map tidy gs, (p,path,goal) <- wpx procs s [(inv, [], "maintain the loop invariant at " ++ (show pos))] ]
-        achieveGoals = [(close (inv `conj` (foldr conj true [ AST.not g | (g,_) <- map tidy gs ]) `implies` p), pos:path, goal) | (p,path,goal) <- post ]
+  where establishInv = (inv, [], "establish the loop invariant\n\n" ++ (show (fst pos)) ++ ": " ++ (showA inv))
+        maintainInv = [ (close ((g `conj` inv) `implies` p), (npos g, showA g):path, goal) | (g,s) <- map tidy gs, (p,path,goal) <- wpx procs s [(inv, [], "maintain the loop invariant\n\n" ++ (show (fst pos)) ++ " : " ++ (showA inv))] ]
+        achieveGoals = [(close (postLoop `implies` p), (pos,(showA postLoop) ++ "\n\t {the invariant and the negation of the guards}\n"):path, goal) | (p,path,goal) <- post ]
+        postLoop = inv `conj` (foldr conj true [ AST.not g | (g,_) <- map tidy gs ]) 
 
 {-
 

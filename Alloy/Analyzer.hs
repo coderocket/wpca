@@ -13,6 +13,7 @@ import Alloy.Output.Parser
 import Data.Ord
 import List
 import Loc
+import Alloy.Show
 
 {- 
 
@@ -202,7 +203,7 @@ getRecordType (Node (_, Record name) _) = (name, setType name)
 calcObligs procs (Node (_,Proc _) [params, locals, constants, pre, program, post]) = 
  return $ zip names [ (pre `implies` wp,path,goal) | (wp,path,goal) <- obligations]
  where names = ["test"++(show i) | i <- [1..] ] 
-       obligations = wpx procs program [(post,[],"satisfy the postcondition")]
+       obligations = wpx procs program [(post,[],"satisfy the postcondition\n\n" ++ (show (fst (npos post))) ++ ": " ++ (showA post))]
 
 showModel :: [String] -> [AST] -> Env -> Env -> [(String,Oblig)] -> String
 
@@ -260,67 +261,6 @@ showType = foldRose f
 	f (_, Output) [x] = x
 	f other ns = error ("Internal error: Don't know how to show the type " ++ (show other)) 
 
-showA :: AST -> String
-showA = foldRose f
-  where f (_, Plus) [x,y] = x ++ ".add[" ++ y ++ "]"
-        f (_, Minus) [x,y] = x ++ ".sub[" ++ y ++ "]"
-        f (_, Times) [x,y] = x ++ ".mul[" ++ y ++"]"
-        f (_, Div) [x,y] = x ++ ".div[" ++ y ++"]"
-        f (_, Mod) [x,y] = x ++ ".rem[" ++ y ++"]"
-        f (_, Quotient) [x,y] = "(" ++ x ++ " / " ++ y ++ ")"
-        f (_, Eq) [x,y] = x ++ " = " ++ y
-        f (_, NotEq) [x,y] = x ++ " != " ++ y
-        f (_, Greater) [x,y] = x ++ " > " ++ y
-        f (_, Less) [x,y] = x ++ " < " ++ y
-        f (_, Geq) [x,y] = x ++ " >= " ++ y
-        f (_, Leq) [x,y] = x ++ " <= " ++ y
-        f (_, In) [x,y] = "(" ++ x ++ " in " ++ y ++ ")"
-        f (_, Conj) [x,y] = x ++ " and " ++ y
-        f (_, Disj) [x,y] = "("++ x ++ " or " ++ y++")"
-        f (_, Implies) [x,y] = "(" ++ x ++ " => " ++ y ++")"
-        f (_, Range) [x,y] = "range[" ++ x ++ "," ++ y ++ "]"
-        f (_, Join) xs = (showJoin xs)
-        f (_, Product) xs = (showRel xs)
-        f (_, Not) [x] = "!(" ++ x ++ ")"
-        f (_, Neg) [x] = x ++ ".negate"
-        f (_, Reverse) [x] = "~(" ++ x ++ ")"
-        f (_, Int x) [] = show x
-        f (_, AST.True) [] = "true"
-        f (_, AST.False) [] = "false"
-        f (_, Const) [x] = x
-        f (_, Type "int") [] = "Int"
-        f (_, Type "nat") [] = "Int"
-        f (_, Type n) [] = n
-	f (_, Output) [x] = x
-        f (_, ArrayType _ t) [] = if t == "int" then "seq Int" else ("seq " ++ t)
-        f (_, Declaration) [names, typ] = names ++ " : " ++ typ
-        f (_, List) names = showNames names
-        f (_, Quantifier Sum) [decls, e] = "(sum " ++ decls ++ " | " ++ e ++ ")"
-        f (_, Quantifier All) [decls, e] = "(all " ++ decls ++ " | " ++ e ++ ")"
-        f (_, Quantifier No) [decls, e] = "(no " ++ decls ++ " | " ++ e ++ ")"
-        f (_, Quantifier Some) [decls, e] = "(some " ++ decls ++ " | " ++ e ++ ")"
-        f (_, SomeSet) [e] = "(some " ++ e ++ ")"
-        f (_, String n) [] = n
-        f (_, Pair) [x,y] = "(" ++ x ++ " -> " ++ y  ++ ")"
-        f (_, Union) [x,y] = "(" ++ x ++ " + " ++ y  ++ ")"
-        f (_, SetDiff) [x,y] = "(" ++ x ++ " - " ++ y  ++ ")"
-        f (_, Update) [x,y] = "(" ++ x ++ " ++ " ++ y  ++ ")"
-	f (_, Closure) [x] = x
-	f other ns = error ("Internal error: Don't know how to show " ++ (show other) ++ " args: " ++ (showNames ns))
-
-showRel = foldr f ""
-  where f x [] = x
-	f x xs = "(" ++ x ++ ") -> (" ++ xs ++ ")"
-
-showJoin = foldr f ""
-  where f x [] = x
-        f x xs = "(" ++ x ++ ")." ++ "(" ++ xs ++ ")"
-
-showNames = foldr f ""
-  where
-    f n [] = n
-    f n ns = n ++ "," ++ ns
-
 analyse :: Config -> IO ()
 
 analyse cfg = 
@@ -361,19 +301,19 @@ report types cfg obligs =
 showOutput :: Env -> [(String, Oblig)] -> [ (String, Maybe Instance) ] -> String
 showOutput types wpEnv checks = foldr (++) "" (map f checks)
   where f (name, Nothing) = ""
-        f (name, Just (Instance eqns)) = "\n("++name++") " ++ "When the program starts with:\n\n" ++ (showInst types eqns) ++ "\n" ++ (pathOf name wpEnv) ++ (skolemVars types eqns)
+        f (name, Just (Instance eqns)) = "\n("++name++") " ++ "error:\n\n" ++ (showSkolem types eqns) ++ "\n" ++ (pathOf name wpEnv) 
 
 pathOf :: String -> [(String, Oblig)] -> String
 
 pathOf name env = case (lookup name env) of
   Nothing -> "... Oops, there is no information about this check :("
-  (Just (_,[],goal)) -> "it fails to " ++ goal ++ "\n"
-  (Just (_,path,goal)) -> "it fails to " ++ goal ++ "\n"
-                          ++ "while following the path that goes through\n"
-                          ++ (showPath path) ++ "\n"
+  (Just (_,[],goal)) -> "fails to " ++ goal ++ "\n"
+  (Just (_,path,goal)) -> "satisfies\n\n" ++ (showPath path) ++ "\n\n" 
+			++ "but fails to " ++ goal ++ "\n"
+
 showPath [] = ""
-showPath [(line,col)] = "Line " ++ (show line) ++ " column " ++ (show col)
-showPath ((line,col):(r:rest)) = "Line " ++ (show line) ++ " column " ++ (show col) ++ " then\n" ++ (showPath (r:rest))
+showPath [((line,col),text)] = (show line) ++ ": " ++ text
+showPath (((line,col),text):(r:rest)) = (show line) ++ ": " ++ text ++ "\n" ++ (showPath (r:rest))
 
 showInst :: Env -> [Equation] -> String
 
@@ -383,14 +323,6 @@ showInst types ((Relation kind name tuples):rest) =
   if kind == "thisState"
   then name ++ "=" ++ (showRelation types name (map tail tuples)) ++"\n" ++ (showInst types rest)
   else showInst types rest
-
-skolemVars :: Env -> [ Equation ] -> String
-
-skolemVars types eqs = 
-  if skolems == "" 
-  then ""
-  else "in particular for " ++ skolems
-  where skolems = showSkolem types eqs
 
 showSkolem :: Env -> [ Equation ] -> String
 showSkolem types = foldr f "" 
