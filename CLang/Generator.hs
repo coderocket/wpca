@@ -153,6 +153,7 @@ annotateArgs params args = [ annotateArg paramType arg | ((_,paramType),arg) <- 
 
 annotateArg :: AST -> AST -> AST
 annotateArg (Node (_,Output) [t]) (Node (_,String nv) []) = Node (startLoc, PassByRef nv) []
+annotateArg p@(Node (_,Output) [_]) (Node (_,OutputVar) [e]) = e
 annotateArg (Node (_,Output) _) expr = 
 	error ((show (fst (rootLabel expr))) ++ ": Cannot pass an expression by value")
 annotateArg param expr = expr
