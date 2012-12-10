@@ -57,16 +57,119 @@ sidec if ... fi = g1 or g2 or ... gn
 
 - fix the c code generator to pass variables by reference when they are passed to an 'out' parameter.
 
+- The solution is indeed simple but wrong. The essence of the mistake
+is that
+
+all x | (P => all x | Q)
+
+is not equivalent* to
+
+all x | P => Q
+
+* only implies
+
+- There is a simple solution to the problem below. The difficult part
+is that we quantify over state variables but we have already seen that
+this can be achieved by 'closing' them to avoid substitution. Thus
+
+wp (pre | F | post) p = some C | (pre and close F | post => p)
+
+where close F | P is like lambda expression that binds the variables
+in F and prevents them from being substituted.
+
+- A major problem regarding procedure calls.
+
+Currently the wp of a procedure call relies on the wp of a spec statement
+
+wp (pre | F | post) p = some C | (pre and all F | post => p) 
+
+where C is the set of constant variables implicitly declared in pre
+and F is the set of frame variables that the procedure modifies.
+
+This introduces two quantifiers into the proof obligation. When the procedure
+is manipulating arrays (or record fields) these quantifiers are on relations.
+Unfortunately Alloy cannot deal with higher order quantifiers unless they are
+collected 'at the top' of the predicate. 
+
+We will solve this problem in two steps:
+
+1. Replace the existential quantifier by a substitution. We know that
+
+some x : X | x = E and P 
+
+is a different way to write the substitution
+
+some X and P[x := E]
+
+Fortunately this is the exact form that the constants appear in the 
+precondition. 
+
+2. Ensure that as long as the user does not explicitly insert higher order
+qunatifiers all the higher order quantifiers are at the top of the obligation.
+
+We say that a predicate is 'nice' if it has the form
+
+all x : X | P 
+
+where:
+
+(I) x is a vector of variable names and X is a corresponding vector
+of relations.
+(II) P does not contain higher order quantifiers
+
+We now show that given a nice predicate as a postcondition we can always
+calculate for it a nice precondition. The proof is by induction on the
+structure of any program: 
+
+Let P be a nice predicate, then:
+
+wp skip P = P
+wp (v := e) P = P[v := e]
+
+the result of these two cases is nice because we do not add any
+quantifiers to the predicate.
+
+wp (s1;s2) P = wp s1 (wp s2 P)
+
+the result is nice by induction (twice).
+
+wp (g -> s) P 
+= g => wp s P 
+= { by induction } 
+g => (all x : X | Q) 
+= { provided that g has no free variables that appear in x }
+all x : X | g => Q
+
+We can guarantee the last condition by replacing x with fresh
+variables before we 'insert' g into the quantifier.
+
+wp s1 [] s2 P 
+= 
+(wp s1 P) and (wp s2 P) 
+= { by induction twice }
+(all x : X | Q) and (all y : Y | R)
+= { provided that x is not free in R and y is not free in Q }
+all x:X,y:Y | Q and R
+ 
+We can guarantee the last condition by replacing x and y with
+fresh variables before we merge the predicates.
+
+wp (pre | frame | post) P 
+= 
+pre and all frame | (post => P)
+= { provided that frame does not appear free in pre }
+all frame | pre and (post => P)
+=
+all frame | pre and (post => all x : X | Q)
+= { provided that x does not appear free in post }
+all frame | pre and all x : X | (post => Q)
+= { provided that x does not appear free in pre }
+all frame | all x : X | pre and (post => Q)
+
+and this is a nice predicate.
+
 - currently the way I calculate the wp of a call is not efficient because I hide the constants using 
 existential quantifiers. A much better way is to substitute them for their values.
-
-- Use the keyword 'var' to disambiguate the local variables from
-the assignment statement
-
-does not help us because the problem is the mix between a sequence
-of variable definitions and a sequence of statements (both are separated by ;)
-
-- Remember to ensure that output parameters are disjoint 
 
 when we pass variables as output parameters to a procedure the
 variables must be disjoint.
@@ -668,6 +771,16 @@ we need to display the following information:
 - what are the values that cause the program to follow this path? 
 
 Done
+
+- fix the c code generator to pass variables by reference when they are passed to an 'out' parameter.
+
+- Use the keyword 'var' to disambiguate the local variables from
+the assignment statement
+
+does not help us because the problem is the mix between a sequence
+of variable definitions and a sequence of statements (both are separated by ;)
+
+- Remember to ensure that output parameters are disjoint 
 
 - make 'sum' a term
 

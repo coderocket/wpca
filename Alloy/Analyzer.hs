@@ -13,6 +13,7 @@ import Alloy.Output.Parser
 import Data.Ord
 import List
 import Loc
+import Alloy.Show
 
 {- 
 
@@ -41,7 +42,7 @@ preProcessProc records proc = tidyOps types $ tidyJoins proc
 extractConstants :: [AST] -> AST -> AST
 
 extractConstants records (Node (p, Proc name) [params, locals, pre, program, post]) = Node (p, Proc name) [params, locals, constants, pre, program, post]
-  where constants = Node (startLoc, List) (cvars (getStateEnv records (subForest params)) pre)
+  where constants = Node (startLoc, List) (cvarsX (getStateEnv records (subForest params)) pre)
 
 cvars :: Env -> AST -> [AST]
 
@@ -60,6 +61,18 @@ cvars types (Node (_, Conj) [x, y]) = xtypes ++ (cvars ((declsToList xtypes)++ty
   where xtypes = cvars types x
 
 cvars types _ = []
+
+cvarsX :: Env -> AST -> [AST]
+
+cvarsX types (Node (_,Eq) [expr, (Node (p,String c) [])]) =
+    case (lookup c types) of
+      Nothing -> [ Node (startLoc, Declaration) [ Node (startLoc, List) [string c,expr], typeof types expr] ]
+      (Just _) -> []
+
+cvarsX types (Node (_, Conj) [x, y]) = xtypes ++ (cvarsX ((declsToList xtypes)++types) y)
+  where xtypes = cvarsX types x
+
+cvarsX types _ = []
 
 getStateVars :: [AST] -> AST -> Env
 
@@ -137,13 +150,14 @@ tidyJoins = foldRose f
 
 tidyOps :: Env -> AST -> AST
 tidyOps env (Node (pos, Plus) [x,y]) = 
-  if typeof env x == intType && typeof env y == intType
+  if typeof env x `sameTypeAs` intType && typeof env y `sameTypeAs` intType
   then Node (pos, Plus) [x,y]
   else Node (pos, Union) [x,y]
 tidyOps env (Node (pos, Minus) [x,y]) = 
-  if typeof env x == intType && typeof env y == intType
+  if typeof env x `sameTypeAs` intType && typeof env y `sameTypeAs` intType
   then Node (pos, Minus) [x,y]
   else Node (pos, SetDiff) [x,y]
+
 tidyOps env (Node (pos, Quantifier q) [ Node(_,List) decls, body]) = 
   Node (pos, Quantifier q) [tidyOpsDecls env decls, tidyOps ((declsToList decls) ++ env) body]
 tidyOps env (Node (pos, t) subnodes) = 
@@ -153,30 +167,11 @@ tidyOpsDecls :: Env -> [AST] -> AST
 
 tidyOpsDecls env decls = Node (startLoc, List) [ Node (startLoc, Declaration) [ns, tidyOps env t] | (Node (_,Declaration) [ns,t]) <- decls ]
 
-{-
-augment :: [AST] -> AST -> IO (AST)
-
-augment records code@(Node (pos,Proc name) [params, locals, constants, pre, program, post]) = 
-  return $ Node (pos,Proc name) [params, locals, constants, f [] initEnv pre, f [] initEnv program, f [] initEnv post] 
-  where f bound env (Node (pos, String n) []) = 
-          case (elemIndex n bound) of 
-           Nothing -> case (lookup n env) of
-                       (Just t) -> Node (pos, t) []
-                       Nothing -> Node (pos, String n) []
-           (Just _) -> Node (pos, String n) []
-        f bound env (Node (pos, Quantifier q) [decls, body]) = 
-          augmentQuantifier bound env pos q decls body
-        f bound env (Node datum children) = 
-           Node datum (map (f bound env) children)
-        initEnv = [ (n, String n) | (n,_) <- (getStateVars records code) ] ++ [ (n, String n) | (n,_) <- getConstants code ]
-        augmentQuantifier bound env pos kind decls body =
-          Node (pos, Quantifier kind) [Node (pos, List) (augmentDecls bound env (subForest decls)), f ((declNames decls)++bound) env body]
-        augmentDecls bound env ds = [ Node (pos, Declaration) [ns, f bound env t] | (Node (pos,Declaration) [ns,t]) <- ds ]
--}  
-
 getConstants :: AST -> Env
 
-getConstants (Node (_,Proc _) [params, locals, Node (_,List) constants, pre, program, post]) = declsToList constants
+getConstants (Node (_,Proc _) [params, locals, Node (_,List) constants, pre, program, post]) = 
+  map f constants 
+  where f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = (x,t)
 
 getStateEnv :: [AST] -> [AST] -> Env
 getStateEnv records locals = 
@@ -202,17 +197,28 @@ getRecordType (Node (_, Record name) _) = (name, setType name)
 calcObligs procs (Node (_,Proc _) [params, locals, constants, pre, program, post]) = 
  return $ zip names [ (pre `implies` wp,path,goal) | (wp,path,goal) <- obligations]
  where names = ["test"++(show i) | i <- [1..] ] 
-       obligations = wpx procs program [(post,[],"satisfy the postcondition")]
+       obligations = wpx procs program [(post,[],"satisfy the postcondition\n\n" ++ (show (fst (npos post))) ++ ": " ++ (showA post))]
 
 showModel :: [String] -> [AST] -> Env -> Env -> [(String,Oblig)] -> String
 
 showModel libraries records stateVars constants obligs =
  (foldr (++) "" [ "open " ++ s ++ "\n" | s <- libraries])
  ++ (showRecords records) 
+ ++ (showStateSig stateVars)
  ++ (foldr (++) "" (map (showOblig (stateVars ++ constants)) obligs))
 
 showRecords :: [AST] -> String
 showRecords = foldr (++) [] . map showRecord
+
+showStateSig :: Env -> String
+
+showStateSig vars = header ++ fields ++ footer
+  where header = "sig STATE {\n"
+        fields = separateByComma (map showStateVar vars)
+        footer = "}\n"
+
+showStateVar :: (String, AST) -> String
+showStateVar (name,t) = "STATE_" ++ name ++ ": " ++ (showType t) ++ "\n"
 
 showRecord :: AST -> String
 showRecord (Node (_,Record name) defs) = header ++ fields ++ footer
@@ -228,6 +234,7 @@ showConstraints env = "{" ++ (foldr (++) "" (map f env)) ++ "}"
  where
  f (n, Node (_, Type "nat") []) = "(" ++ n++".gte[0])\n"
  f (n, Node (_, ArrayType k _) []) = "(#"++n++"="++k++")\n"
+ f (n, Node (_, Output) [t]) = f (n,t)
  f _ = ""
 
 showOblig env (nm, (wp, path, goal)) = comment ++ pred ++ assertion ++ check
@@ -259,67 +266,6 @@ showType = foldRose f
         f (_, Product) xs = (showRel xs)
 	f (_, Output) [x] = x
 	f other ns = error ("Internal error: Don't know how to show the type " ++ (show other)) 
-
-showA :: AST -> String
-showA = foldRose f
-  where f (_, Plus) [x,y] = x ++ ".add[" ++ y ++ "]"
-        f (_, Minus) [x,y] = x ++ ".sub[" ++ y ++ "]"
-        f (_, Times) [x,y] = x ++ ".mul[" ++ y ++"]"
-        f (_, Div) [x,y] = x ++ ".div[" ++ y ++"]"
-        f (_, Mod) [x,y] = x ++ ".rem[" ++ y ++"]"
-        f (_, Quotient) [x,y] = "(" ++ x ++ " / " ++ y ++ ")"
-        f (_, Eq) [x,y] = x ++ " = " ++ y
-        f (_, NotEq) [x,y] = x ++ " != " ++ y
-        f (_, Greater) [x,y] = x ++ " > " ++ y
-        f (_, Less) [x,y] = x ++ " < " ++ y
-        f (_, Geq) [x,y] = x ++ " >= " ++ y
-        f (_, Leq) [x,y] = x ++ " <= " ++ y
-        f (_, In) [x,y] = "(" ++ x ++ " in " ++ y ++ ")"
-        f (_, Conj) [x,y] = x ++ " and " ++ y
-        f (_, Disj) [x,y] = "("++ x ++ " or " ++ y++")"
-        f (_, Implies) [x,y] = "(" ++ x ++ " => " ++ y ++")"
-        f (_, Range) [x,y] = "range[" ++ x ++ "," ++ y ++ "]"
-        f (_, Join) xs = (showJoin xs)
-        f (_, Product) xs = (showRel xs)
-        f (_, Not) [x] = "!(" ++ x ++ ")"
-        f (_, Neg) [x] = x ++ ".negate"
-        f (_, Reverse) [x] = "~(" ++ x ++ ")"
-        f (_, Int x) [] = show x
-        f (_, AST.True) [] = "true"
-        f (_, AST.False) [] = "false"
-        f (_, Const) [x] = x
-        f (_, Type "int") [] = "Int"
-        f (_, Type "nat") [] = "Int"
-        f (_, Type n) [] = n
-	f (_, Output) [x] = x
-        f (_, ArrayType _ t) [] = if t == "int" then "seq Int" else ("seq " ++ t)
-        f (_, Declaration) [names, typ] = names ++ " : " ++ typ
-        f (_, List) names = showNames names
-        f (_, Quantifier Sum) [decls, e] = "(sum " ++ decls ++ " | " ++ e ++ ")"
-        f (_, Quantifier All) [decls, e] = "(all " ++ decls ++ " | " ++ e ++ ")"
-        f (_, Quantifier No) [decls, e] = "(no " ++ decls ++ " | " ++ e ++ ")"
-        f (_, Quantifier Some) [decls, e] = "(some " ++ decls ++ " | " ++ e ++ ")"
-        f (_, SomeSet) [e] = "(some " ++ e ++ ")"
-        f (_, String n) [] = n
-        f (_, Pair) [x,y] = "(" ++ x ++ " -> " ++ y  ++ ")"
-        f (_, Union) [x,y] = "(" ++ x ++ " + " ++ y  ++ ")"
-        f (_, SetDiff) [x,y] = "(" ++ x ++ " - " ++ y  ++ ")"
-        f (_, Update) [x,y] = "(" ++ x ++ " ++ " ++ y  ++ ")"
-	f (_, Closure) [x] = x
-	f other ns = error ("Internal error: Don't know how to show " ++ (show other) ++ " args: " ++ (showNames ns))
-
-showRel = foldr f ""
-  where f x [] = x
-	f x xs = "(" ++ x ++ ") -> (" ++ xs ++ ")"
-
-showJoin = foldr f ""
-  where f x [] = x
-        f x xs = "(" ++ x ++ ")." ++ "(" ++ xs ++ ")"
-
-showNames = foldr f ""
-  where
-    f n [] = n
-    f n ns = n ++ "," ++ ns
 
 analyse :: Config -> IO ()
 
@@ -361,19 +307,19 @@ report types cfg obligs =
 showOutput :: Env -> [(String, Oblig)] -> [ (String, Maybe Instance) ] -> String
 showOutput types wpEnv checks = foldr (++) "" (map f checks)
   where f (name, Nothing) = ""
-        f (name, Just (Instance eqns)) = "\n("++name++") " ++ "When the program starts with:\n\n" ++ (showInst types eqns) ++ "\n" ++ (pathOf name wpEnv) ++ (skolemVars types eqns)
+        f (name, Just (Instance eqns)) = "\n("++name++") " ++ "error:\n\n" ++ (showSkolem types eqns) ++ "\n" ++ (pathOf name wpEnv) 
 
 pathOf :: String -> [(String, Oblig)] -> String
 
 pathOf name env = case (lookup name env) of
   Nothing -> "... Oops, there is no information about this check :("
-  (Just (_,[],goal)) -> "it fails to " ++ goal ++ "\n"
-  (Just (_,path,goal)) -> "it fails to " ++ goal ++ "\n"
-                          ++ "while following the path that goes through\n"
-                          ++ (showPath path) ++ "\n"
+  (Just (_,[],goal)) -> "fails to " ++ goal ++ "\n"
+  (Just (_,path,goal)) -> "satisfies\n\n" ++ (showPath path) ++ "\n\n" 
+			++ "but fails to " ++ goal ++ "\n"
+
 showPath [] = ""
-showPath [(line,col)] = "Line " ++ (show line) ++ " column " ++ (show col)
-showPath ((line,col):(r:rest)) = "Line " ++ (show line) ++ " column " ++ (show col) ++ " then\n" ++ (showPath (r:rest))
+showPath [((line,col),text)] = (show line) ++ ": " ++ text
+showPath (((line,col),text):(r:rest)) = (show line) ++ ": " ++ text ++ "\n" ++ (showPath (r:rest))
 
 showInst :: Env -> [Equation] -> String
 
@@ -383,14 +329,6 @@ showInst types ((Relation kind name tuples):rest) =
   if kind == "thisState"
   then name ++ "=" ++ (showRelation types name (map tail tuples)) ++"\n" ++ (showInst types rest)
   else showInst types rest
-
-skolemVars :: Env -> [ Equation ] -> String
-
-skolemVars types eqs = 
-  if skolems == "" 
-  then ""
-  else "in particular for " ++ skolems
-  where skolems = showSkolem types eqs
 
 showSkolem :: Env -> [ Equation ] -> String
 showSkolem types = foldr f "" 

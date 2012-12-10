@@ -28,10 +28,11 @@ typeof env (Node (p, Disj) [x,y]) = binary "bool" boolType env p x y "disjoin (o
 typeof env (Node (p, Implies) [x,y]) = binary "bool" boolType env p x y "(imply (=>)"
 typeof env (Node (p, Not) [x]) = unary "bool" boolType env p x "negate (logical not)"
 typeof env (Node (p, Neg) [x]) = unary "int" intType env p x "negate (-)"
-typeof env (Node (_, Output) [x]) = typeof env x
 typeof env (Node (p, String n) []) = 
   case (lookup n env) of
-    (Just t) -> t
+    (Just t) -> case t of 
+                 (Node (_,Output) [t']) -> t'
+                 _ -> t
     Nothing -> error ("Type is missing: " ++ (show p) ++ ": for the variable " ++ n)
 
 -- The following rule is specific for typechecking arrays. It must be modified to support

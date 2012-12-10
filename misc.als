@@ -32,11 +32,21 @@ fun range[b,e:Int] : set Int {
   { z : Int | z.gte[b] and z.lte[e] }
 }
 
-pred permutation[x,y : seq univ]
+pred permutation[b,e:Int,x,y : seq univ]
 {
-	#x = #y
-	all t : Int.x | # x.t = # y.t
+ 	let r = range[b,e.sub[1]] |{
+		#r<:x = #r<:y
+		all t : Int.x | # (r<:x).t = # (r<:y).t 
+	}
 }
+
+pred nochange[b,e:Int, x,X:seq univ] 
+{
+	let r = range[b,e.sub[1]] | {
+		r <:x = r <: X
+	}		
+}
+
 
 check { all x : Int | abs[abs[x]] = abs[x] }
 

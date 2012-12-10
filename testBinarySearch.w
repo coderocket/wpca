@@ -1,5 +1,6 @@
-proc binarySearch[x : int; N : nat; f : array of N int; p,q,m : int]
+proc binarySearch[x : int, N : nat, f : array of N int, p : out int]
   { all i,j : 0..N-1 | i <= j => f[i] <= f[j] }
+  q,m : int
 ; p,q := -1,N
 ; keeping 
    -1<= p and p < q and q <= N and (p = -1 or f[p] <= x) and (q = N or x < f[q]) 

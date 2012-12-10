@@ -3,8 +3,9 @@ import List
 import Data.Tree
 import AST
 import Loc
+import Alloy.Show
 
-type Oblig = (AST, [Loc], String)
+type Oblig = (AST, [(Loc,String)], String)
 
 name (Node (_, String n) []) = n
 guard (Node (_,List) [g,s]) = g 
@@ -109,12 +110,12 @@ wpx procs (Node (_,Alloc name) [typ]) post = [ (f p, path, goal) | (p, path, goa
 
 
 wpx procs (Node (_,Skip) []) post = post
-wpx procs (Node (pos,Assert) [p]) post = (p,[pos],"satisfy the assertion"):post
+wpx procs (Node (pos,Assert) [p]) post = (p,[(pos,showA p)],"satisfy the assertion"):post
 wpx procs (Node (_,Seq) [x,y]) post = wpx procs x ((wpx procs y) post)
 
 wpx procs (Node (pos,Cond) gs) post = ifdomain : guards 
-  where ifdomain = (foldr disj false (map guard gs), [pos], "satisfy any of the guards")
-        guards = [ (g `implies` p, (npos s):path, goal) |  (g,s) <- map tidy gs, (p, path, goal) <- wpx procs s post ]
+  where ifdomain = (foldr disj false (map guard gs), [(pos,"if ... fi")], "satisfy any of the guards")
+        guards = [ (g `implies` p, (npos s, show g):path, goal) |  (g,s) <- map tidy gs, (p, path, goal) <- wpx procs s post ]
 
 {- 
 
@@ -183,28 +184,28 @@ predicate using a special 'closure' node.
 -}
 
 wpx procs (Node (pos,Loop) [inv, (Node (_,List) gs)]) post = establishInv : maintainInv ++ achieveGoals
-  where establishInv = (inv, [], "establish the loop invariant at " ++ (show pos))
-        maintainInv = [ (close ((g `conj` inv) `implies` p), (npos g):path, goal) | (g,s) <- map tidy gs, (p,path,goal) <- wpx procs s [(inv, [], "maintain the loop invariant at " ++ (show pos))] ]
-        achieveGoals = [(close (inv `conj` (foldr conj true [ AST.not g | (g,_) <- map tidy gs ]) `implies` p), pos:path, goal) | (p,path,goal) <- post ]
+  where establishInv = (inv, [], "establish the loop invariant\n\n" ++ (show (fst pos)) ++ ": " ++ (showA inv))
+        maintainInv = [ (close ((g `conj` inv) `implies` p), (npos g, showA g):path, goal) | (g,s) <- map tidy gs, (p,path,goal) <- wpx procs s [(inv, [], "maintain the loop invariant\n\n" ++ (show (fst pos)) ++ " : " ++ (showA inv))] ]
+        achieveGoals = [(close (postLoop `implies` p), (pos,(showA postLoop) ++ "\n\t {the invariant and the negation of the guards}\n"):path, goal) | (p,path,goal) <- post ]
+        postLoop = inv `conj` (foldr conj true [ AST.not g | (g,_) <- map tidy gs ]) 
 
 {-
 
 Given a procedure f[params] {pre} {post})
 
-the call f[args] has the same wp as the sequence:
+The semantics of the call f[args] is the following:
 
-params := args
-; (pre | out | post)
-; vs := out
+(pre[params:=args] | out[params:=args] | post[params:=args])
 
-where out is the set of out parameters and vs is the set of args 
-that are passed to the out parameters (this set must consist of
-variables).
+where out is the set of out parameters and provided that in the
+substitution params:=args the output parameters are replaced by variables.
+
+In addition, the wp of a specification statement is:
 
 wp (pre | out | post) P = some constants | pre and (all out | post => P)
 
 where constants are the constant variables that are defined implicitly
-in the precondition (an alternative is to avoid the existential quantifier
+in the precondition (an alternative is to avoid using the existential quantifier
 by immediately substituting the constants by their variables).
 
 We create this program fragment as follows:
@@ -222,11 +223,34 @@ from args.
  
 wpx procs (Node (_,Call name) args) obligs =
 	case (lookup name procs) of
-		(Just proc) -> wpxCall procs proc args obligs
+		(Just proc) -> wpxCallX procs proc args obligs
 		Nothing -> error ("No such procedure: " ++ name)
 
 wpx procs (Node (_, SpecStmt) [pre, constants, frame, post]) obligs =
-	[ (quantifySome constants (pre `conj` quantifyAll frame (post `implies` p)), path, goal) | (p,path,goal) <- obligs ]
+	[ (quantifySomeX constants (pre `conj` quantifyState frame (post `implies` p)), path, goal) | (p,path,goal) <- obligs ]
+
+quantifySomeX :: AST -> AST -> AST 
+quantifySomeX (Node (_,List) constants) pred = subst [] (map f constants) pred
+  where f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = (x,e)
+
+quantifyState decls pred = 
+  case decls of
+	(Node (_,List) []) -> error "Invalid procedure definition (empty frame)."
+	_ -> if fresh `elem` (free [] pred) 
+	     then error (show pred) 
+	     else AST.all fresh (string "STATE") (subst [] joins pred)
+  where joins = [ (name, Node (startLoc, Join) [string fresh, string ("STATE_" ++ name)]) | name <- names ]
+        names = map fst (declsToList (subForest decls))
+        fresh = genFresh "STATE_DUMMY" 0 (bound pred)
+
+-- note: we assume that the generated name could clash only with bound variables. a more robust 
+-- way is to ensure that the name does not clash with any variable.
+
+genFresh :: String -> Int -> [String] -> String
+genFresh name suffix bs = 
+  if (name ++ "_" ++ (show suffix)) `elem` bs
+  then genFresh name (suffix+1) bs
+  else name ++ "_" ++ (show suffix)
 
 quantifyAll decls pred = case decls of 
 				(Node (_,List) []) -> error "Invalid procedure definition (empty frame)."
@@ -235,6 +259,21 @@ quantifyAll decls pred = case decls of
 quantifySome decls pred = case decls of 
 				(Node (_,List) []) -> pred
 				_ -> Node (startLoc, Quantifier Some) [decls, pred]
+
+quantifySomeXX constants pred = quantifySome decls pred
+  where decls = Node (startLoc, List) (map f (subForest constants))
+        f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) =		
+		Node (startLoc, Declaration) [Node (startLoc, List) [Node (startLoc, String x) []], t] 
+
+wpxCallX procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args obligs = 
+  wpx procs (Node (startLoc, SpecStmt) [pre', constants', frame, post']) obligs 
+  where  pre' = subst [] env pre
+         post' = subst [] env post
+         constants' = Node (startLoc, List) (map f (subForest constants))
+         f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = 
+             Node (startLoc, Declaration) [Node (startLoc,List) [Node (startLoc, String x) [], subst [] env e], t]
+         frame = Node (startLoc, List) [ declaration name t | ((_, Node (_,Output) [t]), Node (_,String name) []) <- zip (declsToList (subForest params)) args ]
+         env = zip (map fst (declsToList (subForest params))) args
 
 wpxCall procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args obligs = wpx procs (assignToParams `wseq` specStmt `wseq` assignToVars) obligs 
   where assignToParams = Node (startLoc, Assign) [getNames params, Node (startLoc, List) args]
@@ -259,12 +298,14 @@ filterOutVars = Node (startLoc, List) . foldr f []
 		 (Node (_,Declaration) [_, Node (_,Output) _]) -> e:rest
 		 _ -> rest
 	 _ -> rest
+
 {- subst bound new expr  
 
 substitutes all the free occurrences of state variables in 
 expr that have a binding in new by their binding in new.
 
 -}
+
 subst :: [String] -> Env -> AST -> AST
 
 subst bound env (Node (p,String n) []) = 
@@ -273,7 +314,7 @@ subst bound env (Node (p,String n) []) =
                 (Just e) -> let captured = (nub bound) `intersect` (free [] e)
                                in case captured of 
                                    [] -> e
-                                   _ -> error ("captured: " ++ (show captured))
+                                   _ -> error ("Can't substitute " ++ (show e) ++ "for " ++ n ++ " because " ++ (show bound) ++ " are bound in the expression but free in " ++ (show e))
                 Nothing -> Node (p, String n) []
     (Just _) -> Node (p, String n) []
 
@@ -300,6 +341,14 @@ freeVar bound n =
 
 freeQuantifier bound decls body =
   free ((declNames decls)++bound) body
+
+bound :: AST -> [String]
+
+bound (Node (_, Quantifier _) [decls,body]) = boundQuantifier decls body
+bound (Node _ ns) = foldr List.union [] (map bound ns)
+
+boundQuantifier decls body =
+  (declNames decls) `List.union` (bound body)
 
 declNames :: AST -> [String]
 declNames decls = map fst (declsToList (subForest decls))
