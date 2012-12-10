@@ -193,17 +193,14 @@ wpx procs (Node (pos,Loop) [inv, (Node (_,List) gs)]) post = establishInv : main
 
 Given a procedure f[params] {pre} {post})
 
-the call f[args] has the same wp as the sequence:
+The semantics of the call f[args] is the following:
 
-params := args
-; (pre | out | post)
-; vs := out
+(pre[params:=args] | out[params:=args] | post[params:=args])
 
-where out is the set of out parameters and vs is the set of args 
-that are passed to the out parameters (this set must consist of
-variables). And provided that params do not appear in the code that
-calls the procedure (this can be ensured by subsituting params with 
-fresh names in pre and post). 
+where out is the set of out parameters and provided that in the
+substitution params:=args the output parameters are replaced by variables.
+
+In addition, the wp of a specification statement is:
 
 wp (pre | out | post) P = some constants | pre and (all out | post => P)
 
@@ -226,11 +223,15 @@ from args.
  
 wpx procs (Node (_,Call name) args) obligs =
 	case (lookup name procs) of
-		(Just proc) -> wpxCall procs proc args obligs
+		(Just proc) -> wpxCallX procs proc args obligs
 		Nothing -> error ("No such procedure: " ++ name)
 
 wpx procs (Node (_, SpecStmt) [pre, constants, frame, post]) obligs =
-	[ (quantifySome constants (pre `conj` quantifyState frame (post `implies` p)), path, goal) | (p,path,goal) <- obligs ]
+	[ (quantifySomeX constants (pre `conj` quantifyState frame (post `implies` p)), path, goal) | (p,path,goal) <- obligs ]
+
+quantifySomeX :: AST -> AST -> AST 
+quantifySomeX (Node (_,List) constants) pred = subst [] (map f constants) pred
+  where f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = (x,e)
 
 quantifyState decls pred = 
   case decls of
@@ -259,6 +260,21 @@ quantifySome decls pred = case decls of
 				(Node (_,List) []) -> pred
 				_ -> Node (startLoc, Quantifier Some) [decls, pred]
 
+quantifySomeXX constants pred = quantifySome decls pred
+  where decls = Node (startLoc, List) (map f (subForest constants))
+        f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) =		
+		Node (startLoc, Declaration) [Node (startLoc, List) [Node (startLoc, String x) []], t] 
+
+wpxCallX procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args obligs = 
+  wpx procs (Node (startLoc, SpecStmt) [pre', constants', frame, post']) obligs 
+  where  pre' = subst [] env pre
+         post' = subst [] env post
+         constants' = Node (startLoc, List) (map f (subForest constants))
+         f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = 
+             Node (startLoc, Declaration) [Node (startLoc,List) [Node (startLoc, String x) [], subst [] env e], t]
+         frame = Node (startLoc, List) [ declaration name t | ((_, Node (_,Output) [t]), Node (_,String name) []) <- zip (declsToList (subForest params)) args ]
+         env = zip (map fst (declsToList (subForest params))) args
+
 wpxCall procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args obligs = wpx procs (assignToParams `wseq` specStmt `wseq` assignToVars) obligs 
   where assignToParams = Node (startLoc, Assign) [getNames params, Node (startLoc, List) args]
         specStmt = Node (startLoc, SpecStmt) [pre, constants, filterOutParams params, post]
@@ -282,6 +298,7 @@ filterOutVars = Node (startLoc, List) . foldr f []
 		 (Node (_,Declaration) [_, Node (_,Output) _]) -> e:rest
 		 _ -> rest
 	 _ -> rest
+
 {- subst bound new expr  
 
 substitutes all the free occurrences of state variables in 

@@ -22,6 +22,7 @@ declsToList :: [AST] -> [(String, AST)]
 
 declsToList ds = foldr (++) [] (map f ds) 
   where f (Node (_,Declaration) [(Node (_,List) ds), t]) = foldr (\ (Node (_,String x) []) xs -> (x,t):xs) [] ds
+        f err = error ("declstToList does not apply to " ++ (show err))
 
 separateDecls :: [AST] -> AST
 separateDecls = Node (startLoc, List) . foldr f []

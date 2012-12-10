@@ -42,7 +42,7 @@ preProcessProc records proc = tidyOps types $ tidyJoins proc
 extractConstants :: [AST] -> AST -> AST
 
 extractConstants records (Node (p, Proc name) [params, locals, pre, program, post]) = Node (p, Proc name) [params, locals, constants, pre, program, post]
-  where constants = Node (startLoc, List) (cvars (getStateEnv records (subForest params)) pre)
+  where constants = Node (startLoc, List) (cvarsX (getStateEnv records (subForest params)) pre)
 
 cvars :: Env -> AST -> [AST]
 
@@ -61,6 +61,18 @@ cvars types (Node (_, Conj) [x, y]) = xtypes ++ (cvars ((declsToList xtypes)++ty
   where xtypes = cvars types x
 
 cvars types _ = []
+
+cvarsX :: Env -> AST -> [AST]
+
+cvarsX types (Node (_,Eq) [expr, (Node (p,String c) [])]) =
+    case (lookup c types) of
+      Nothing -> [ Node (startLoc, Declaration) [ Node (startLoc, List) [string c,expr], typeof types expr] ]
+      (Just _) -> []
+
+cvarsX types (Node (_, Conj) [x, y]) = xtypes ++ (cvarsX ((declsToList xtypes)++types) y)
+  where xtypes = cvarsX types x
+
+cvarsX types _ = []
 
 getStateVars :: [AST] -> AST -> Env
 
@@ -138,13 +150,14 @@ tidyJoins = foldRose f
 
 tidyOps :: Env -> AST -> AST
 tidyOps env (Node (pos, Plus) [x,y]) = 
-  if typeof env x == intType && typeof env y == intType
+  if typeof env x `sameTypeAs` intType && typeof env y `sameTypeAs` intType
   then Node (pos, Plus) [x,y]
   else Node (pos, Union) [x,y]
 tidyOps env (Node (pos, Minus) [x,y]) = 
-  if typeof env x == intType && typeof env y == intType
+  if typeof env x `sameTypeAs` intType && typeof env y `sameTypeAs` intType
   then Node (pos, Minus) [x,y]
   else Node (pos, SetDiff) [x,y]
+
 tidyOps env (Node (pos, Quantifier q) [ Node(_,List) decls, body]) = 
   Node (pos, Quantifier q) [tidyOpsDecls env decls, tidyOps ((declsToList decls) ++ env) body]
 tidyOps env (Node (pos, t) subnodes) = 
@@ -154,30 +167,11 @@ tidyOpsDecls :: Env -> [AST] -> AST
 
 tidyOpsDecls env decls = Node (startLoc, List) [ Node (startLoc, Declaration) [ns, tidyOps env t] | (Node (_,Declaration) [ns,t]) <- decls ]
 
-{-
-augment :: [AST] -> AST -> IO (AST)
-
-augment records code@(Node (pos,Proc name) [params, locals, constants, pre, program, post]) = 
-  return $ Node (pos,Proc name) [params, locals, constants, f [] initEnv pre, f [] initEnv program, f [] initEnv post] 
-  where f bound env (Node (pos, String n) []) = 
-          case (elemIndex n bound) of 
-           Nothing -> case (lookup n env) of
-                       (Just t) -> Node (pos, t) []
-                       Nothing -> Node (pos, String n) []
-           (Just _) -> Node (pos, String n) []
-        f bound env (Node (pos, Quantifier q) [decls, body]) = 
-          augmentQuantifier bound env pos q decls body
-        f bound env (Node datum children) = 
-           Node datum (map (f bound env) children)
-        initEnv = [ (n, String n) | (n,_) <- (getStateVars records code) ] ++ [ (n, String n) | (n,_) <- getConstants code ]
-        augmentQuantifier bound env pos kind decls body =
-          Node (pos, Quantifier kind) [Node (pos, List) (augmentDecls bound env (subForest decls)), f ((declNames decls)++bound) env body]
-        augmentDecls bound env ds = [ Node (pos, Declaration) [ns, f bound env t] | (Node (pos,Declaration) [ns,t]) <- ds ]
--}  
-
 getConstants :: AST -> Env
 
-getConstants (Node (_,Proc _) [params, locals, Node (_,List) constants, pre, program, post]) = declsToList constants
+getConstants (Node (_,Proc _) [params, locals, Node (_,List) constants, pre, program, post]) = 
+  map f constants 
+  where f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = (x,t)
 
 getStateEnv :: [AST] -> [AST] -> Env
 getStateEnv records locals = 
@@ -210,10 +204,21 @@ showModel :: [String] -> [AST] -> Env -> Env -> [(String,Oblig)] -> String
 showModel libraries records stateVars constants obligs =
  (foldr (++) "" [ "open " ++ s ++ "\n" | s <- libraries])
  ++ (showRecords records) 
+ ++ (showStateSig stateVars)
  ++ (foldr (++) "" (map (showOblig (stateVars ++ constants)) obligs))
 
 showRecords :: [AST] -> String
 showRecords = foldr (++) [] . map showRecord
+
+showStateSig :: Env -> String
+
+showStateSig vars = header ++ fields ++ footer
+  where header = "sig STATE {\n"
+        fields = separateByComma (map showStateVar vars)
+        footer = "}\n"
+
+showStateVar :: (String, AST) -> String
+showStateVar (name,t) = "STATE_" ++ name ++ ": " ++ (showType t) ++ "\n"
 
 showRecord :: AST -> String
 showRecord (Node (_,Record name) defs) = header ++ fields ++ footer
@@ -229,6 +234,7 @@ showConstraints env = "{" ++ (foldr (++) "" (map f env)) ++ "}"
  where
  f (n, Node (_, Type "nat") []) = "(" ++ n++".gte[0])\n"
  f (n, Node (_, ArrayType k _) []) = "(#"++n++"="++k++")\n"
+ f (n, Node (_, Output) [t]) = f (n,t)
  f _ = ""
 
 showOblig env (nm, (wp, path, goal)) = comment ++ pred ++ assertion ++ check
