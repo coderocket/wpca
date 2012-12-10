@@ -35,9 +35,18 @@ fun range[b,e:Int] : set Int {
 pred permutation[b,e:Int,x,y : seq univ]
 {
  	let r = range[b,e.sub[1]] |{
-	#r<:x = #r<:y
-	all t : Int.x | # (r<:x).t = # (r<:y).t }
+		#r<:x = #r<:y
+		all t : Int.x | # (r<:x).t = # (r<:y).t 
+	}
 }
+
+pred nochange[b,e:Int, x,X:seq univ] 
+{
+	let r = range[b,e.sub[1]] | {
+		r <:x = r <: X
+	}		
+}
+
 
 check { all x : Int | abs[abs[x]] = abs[x] }
 
