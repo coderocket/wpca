@@ -84,6 +84,7 @@ analyze :: Config -> [AST] -> [AST] -> [AST] -> IO ()
 analyze config records procs theory = loop procs 
   where loop [] = return ()
         loop (p:ps) = do analyzeProc config env theory records p 
+                         loop ps
         env = makeProcEnv procs
 
 {-
