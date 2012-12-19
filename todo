@@ -1,3 +1,13 @@
+
+- when 'calling' a procedure ensure that no variable that is passed as an argument 
+to a var parameter occurs free in the other arguments.  
+
+- expand the idea of an obligation. it may be:
+   either a proof obligation, or a feasibility check (that the precondition of
+a procedure or of a procedure call is not false) or a miracle (that the postcondition
+of a procedure or of a procedure call is false)
+  generate the alloy code to test for these conditions.
+
 - The solution is indeed simple but wrong. The essence of the mistake
 is that
 

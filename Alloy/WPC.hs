@@ -227,10 +227,11 @@ wpx procs (Node (_,Call name) args) obligs =
 		Nothing -> error ("No such procedure: " ++ name)
 
 wpx procs (Node (_, SpecStmt) [pre, constants, frame, post]) obligs =
-	[ (quantifySomeX constants (pre `conj` quantifyState frame (post `implies` p)), path, goal) | (p,path,goal) <- obligs ]
+	[ (onePointRule constants pre, path, "satisfy the precondition of the procedure") | (p,path,goal) <- obligs ]
+	++ [ (onePointRule constants (quantifyState frame (post `implies` p)), path, "the postcondition of the procedure implies " ++ goal) | (p,path,goal) <- obligs ]
 
-quantifySomeX :: AST -> AST -> AST 
-quantifySomeX (Node (_,List) constants) pred = subst [] (map f constants) pred
+onePointRule :: AST -> AST -> AST 
+onePointRule (Node (_,List) constants) pred = subst [] (map f constants) pred
   where f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = (x,e)
 
 quantifyState decls pred = 
