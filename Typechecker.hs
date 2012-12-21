@@ -63,11 +63,16 @@ sameTypeAs :: AST -> AST -> Bool
 
 sameTypeAs (Node (_, Output) [x]) y = sameTypeAs x y
 sameTypeAs x (Node (_, Output) [y]) = sameTypeAs x y
+sameTypeAs (Node (_, Type "nat") []) t = sameTypeAs intType t
+sameTypeAs t (Node (_, Type "nat") []) = sameTypeAs t intType 
 sameTypeAs (Node (_, Type t) []) (Node (_, Type u) []) = t == u
 sameTypeAs (Node (_, String n) []) (Node (_, String m) []) = m == n
 sameTypeAs (Node (_, ArrayType t n) []) (Node (_, ArrayType u m) []) = m == n && t == u
 sameTypeAs (Node (_, Product) ts) (Node (_, Product) us) = foldr f Prelude.True (zip ts us)
   where f (t,u) rest = (t `sameTypeAs` u) && rest 
+sameTypeAs (Node (_, Range) _) t = sameTypeAs intType t
+sameTypeAs t (Node (_, Range) _) = sameTypeAs t intType 
+sameTypeAs e1 e2 = error ("unsupported types: " ++ (show e1) ++ (show e2))
 
 unary :: String -> AST -> Env -> Loc -> AST -> String -> AST
 unary argtype resulttype env p x opname = 
