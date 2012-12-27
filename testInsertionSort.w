@@ -2,7 +2,7 @@ proc Isort[N : nat, a : array of N int, n,k : int]
  { a = A }
 ; n := 1
 ; keeping
-    permutation[0,N,a,A] and n > 0 and all i,j : 0..n-1 | i <= j => a[i] <= a[j]
+    permutation[0,n,a,A] and n > 0 and all i,j : 0..n-1 | i <= j => a[i] <= a[j]
   do n < N -> 
      if a[n] >= a[n-1] -> n := n + 1
      [] a[n] < a[n-1] ->

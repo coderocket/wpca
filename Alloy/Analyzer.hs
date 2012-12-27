@@ -357,6 +357,7 @@ showTuples typ ts =
     Node (_,Product) es -> "[" ++ (showAsRelation ts) ++ "]"
     Node (_,ArrayType _ _) [] -> "[" ++ (showAsArray ts) ++ "]"
     Node (_,SetType _) [] -> "[" ++ (showAsRelation ts) ++ "]"
+    Node (_,Output) [x] -> showTuples x ts
     otherwise -> head (head ts)
 
 {-

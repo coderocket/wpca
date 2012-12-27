@@ -4,7 +4,13 @@ module Subst where
 import Fresh
 import Data.List
 
-data Expr = Lit Int | Var Name
+data Expr = Lit Int | Var Name | SetOp SetOpTag [Expr] | IntOp IntOpTag [Expr]
+  deriving (Show)
+
+data SetOpTag = Union | Intersection | Difference | Product
+  deriving (Show)
+
+data IntOpTag = Plus | Minus | Times | Div | Mod
   deriving (Show)
 
 type Def = [(Name, Expr)]
@@ -51,6 +57,8 @@ instance Subst Expr where
   subst bs (Var n) = case lookup n bs of 
                       Just e -> e
                       Nothing -> Var n
+  subst bs (SetOp op es) = SetOp op (map (subst bs) es)
+  subst bs (IntOp op es) = IntOp op (map (subst bs) es)
   subst bs e = e
 
 instance Subst a => Subst [a] where
@@ -66,6 +74,8 @@ instance Free Pred where
 
 instance Free Expr where
   free (Var n) = [n]
+  free (SetOp _ es) = foldr (union) [] (map free es)
+  free (IntOp _ es) = foldr (union) [] (map free es)
   free _ = []
 
 instance Free a => Free [a] where

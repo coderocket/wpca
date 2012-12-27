@@ -115,7 +115,7 @@ wpx procs (Node (_,Seq) [x,y]) post = wpx procs x ((wpx procs y) post)
 
 wpx procs (Node (pos,Cond) gs) post = ifdomain : guards 
   where ifdomain = (foldr disj false (map guard gs), [(pos,"if ... fi")], "satisfy any of the guards")
-        guards = [ (g `implies` p, (npos s, show g):path, goal) |  (g,s) <- map tidy gs, (p, path, goal) <- wpx procs s post ]
+        guards = [ (g `implies` p, (npos s, showA g):path, goal) |  (g,s) <- map tidy gs, (p, path, goal) <- wpx procs s post ]
 
 {- 
 

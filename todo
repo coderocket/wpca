@@ -1,3 +1,4 @@
+- ensure that constants do not appear in code
 - Instead of moving quantifiers of higher order variables to the top we can
 use the following equivalence
 
