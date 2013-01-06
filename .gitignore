@@ -11,4 +11,4 @@ Parser.hs
 Lexer.hs
 Parser.info
 wpca.cfg
-
+*.output
