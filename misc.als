@@ -1,13 +1,10 @@
 module misc
 
 open util/integer
-open util/ordering[Comparable] as ComparableOrder
 
 one sig NULL {}
 
 sig Object {}
-
-sig Comparable extends Object {}
 
 pred true { no none }
 pred false { some none }
