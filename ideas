@@ -1,0 +1,59 @@
+
+Here is a specification of the wpca tool:
+
+It takes a program written in the wpca language and returns a report
+that indicates the obligations that the program failed to satisfy.
+For each failed obligation the tool should produce a counterexample
+that demonstrates the failure. In addition wpca generates code in
+one or more programming languages according to a user defined
+configuration. 
+
+The paragraph above assumes that the program is legal. If it is not
+legal wpca informes the users of the nature of the error.
+
+we require the following: if a wpca program is legal then it generates
+code that compiles without any errors and it generates a model that
+can be analyzed (the result of the analysis may of course indicate
+that some proof obligations have failed).
+
+We may abstract a bit and consider the analysis and the code
+generation as instances of a code processor abstraction. then the
+description becomes more uniform: wpca takes a configuration file
+and a file that contains a wpca program. The configuration file
+specifies which code processors to run on the wpca program. wpca
+first parses the wpca and if if is legal runs the code processors
+on the program and reports the results to the user.
+
+Now the analyzer is a code processor just like any other code
+processor. 
+
+We should first figure out what is likely to change and then hide
+it behind an interface. What is likely to change?
+
+- we may wish to add/replace the analyzer
+- we may wish to add/replace code generators for different languages
+- we may wish to extend the language
+
+the first two points are covered by the abstraction. the third point
+is not visible to the higher level; it is a problem of the individual
+code processors. there are two aspects to this problem: 
+
+1. how to keep existing code from breaking when we add new language
+features?
+2. what happens when a new feature interacts with existing features?
+
+we may mitigate the first problem by using a flexible representation
+for the AST such that by default the existing code is recursively applied 
+to the new language constructs and requires a change only if specific
+behavior is needed.
+
+the second problem is more difficult because in general features may
+interact in arbitrary ways. 
+
+what kind of language features are there?
+
+- additional data types (including their operations)
+- generics
+- modules
+- additional control structures
+- 
