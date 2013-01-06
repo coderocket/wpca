@@ -6,7 +6,7 @@ import Loc
 %wrapper "posn"
 
 $digit = 0-9			-- digits
-$alpha = [a-zA-Z]		-- alphabetic characters
+$alpha = [a-zA-Z_]		-- alphabetic characters
 
 tokens :-
 
