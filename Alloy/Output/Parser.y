@@ -31,7 +31,11 @@ Output : Checks { reverse $1 }
 Checks : Checks Check { $2:$1 }
   | Check { [$1] }
 
-Check : 'check' Word ':' Result { ($2,$4) }
+Check : 'check' Word Scope ':' Result { ($2,$5) }
+
+Scope :  { [] }
+  | Scope word { [] }
+  | Scope number { [] }
 
 Result : 'unsat' { Nothing }
   | Instance { Just $1 }

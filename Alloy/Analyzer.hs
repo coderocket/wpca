@@ -224,7 +224,7 @@ showStateVar (name,t) = "STATE_" ++ name ++ ": " ++ (showType t) ++ "\n"
 showRecord :: AST -> String
 showRecord (Node (_,Record name) defs) = header ++ fields ++ footer
   where header = "sig " ++ name ++ " extends Object {\n" 
-        fields = separateByComma (map showDef defs)
+        fields = "" -- separateByComma (map showDef defs)
         footer = "}\n"
 
 showDef :: AST -> String
@@ -242,7 +242,8 @@ showOblig env (nm, (wp, path, goal)) = comment ++ pred ++ assertion ++ check
   where comment = "\n/*\ngoal: " ++ goal ++ "\npath: " ++ (show path) ++ "\n*/\n" 
         pred = "pred pred_"  ++ nm ++ "[" ++ (showEnv env) ++ "]\n{\n" ++ (showConstraints env) ++ " =>\n\t" ++ (showA wp) ++ "\n}\n"
         assertion = "assert " ++ nm ++ " {\nall " ++ (showEnv env) ++ "| pred_" ++ nm ++ "[" ++ (showEnvNames env) ++ "]" ++ "\n}\n"
-        check = "check " ++ nm ++ "\n\n"
+        check = "check " ++ nm ++ "\n\n" 
+-- " for 3 but 2 Int\n\n"
 
 showEnv :: Env -> String
 showEnv [] = ""

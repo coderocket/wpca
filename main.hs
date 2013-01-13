@@ -13,14 +13,14 @@ main =
      pname <- getProgName
      if length args /= 1
      then usage pname
-     else do s <- readFile "wpca.cfg"
+     else do s <- readFile "refute.cfg"
              cfg <- parseConfig s
              s <- readFile (args!!0)
              ast <- parse s
              work cfg ast
              CLang.Generator.generate cfg ast
 
-versionMsg = "This is wpca, Version 1.0\n"
+versionMsg = "This is refute, Version 1.0\n"
 
 usage pname = putStrLn ("usage: " ++ pname ++ " spec")
 
