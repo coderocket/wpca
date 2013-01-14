@@ -2,7 +2,7 @@ module misc
 
 open util/integer
 
-one sig NULL {}
+one sig NIL {}
 
 sig Object {}
 

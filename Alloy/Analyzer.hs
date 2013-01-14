@@ -133,7 +133,8 @@ generate cfg procs theory records proc =
      [analysisFile] <- lookupM "alloy.analysisfile" cfg
      libraries <- lookupM "alloy.analysislibraries" cfg
      putStrLn ("... There are " ++ (show (length obligs)) ++ " proof obligations. Writing analysis file to " ++ analysisFile)
-     writeFile analysisFile (showModel (libraries++[s | Node (_,String s) [] <- theory]) records stateVars constants obligs)
+     theoryText <- readTheories [s | Node (_,String s) [] <- theory]
+     writeFile analysisFile (showModel libraries theoryText records stateVars constants obligs)
      return (obligs, stateVars ++ constants)
 
 generateConsistencyCheck :: AST -> IO String
@@ -200,10 +201,18 @@ calcObligs procs (Node (_,Proc _) [params, locals, constants, pre, program, post
  where names = ["test"++(show i) | i <- [1..] ] 
        obligations = wpx procs program [(post,[],"satisfy the postcondition\n\n" ++ (show (fst (npos post))) ++ ": " ++ (showA post))]
 
-showModel :: [String] -> [AST] -> Env -> Env -> [(String,Oblig)] -> String
+readTheories :: [String] -> IO String
+readTheories [] = return ""
+readTheories (theory : theories) = 
+	do first <- readFile (theory ++ ".als")
+           rest <- readTheories theories
+           return (first++ "\n" ++ rest)
 
-showModel libraries records stateVars constants obligs =
+showModel :: [String] -> String -> [AST] -> Env -> Env -> [(String,Oblig)] -> String
+
+showModel libraries theory records stateVars constants obligs =
  (foldr (++) "" [ "open " ++ s ++ "\n" | s <- libraries])
+ ++ "\n" ++ theory ++ "\n"
  ++ (showRecords records) 
  ++ (showStateSig stateVars)
  ++ (foldr (++) "" (map (showOblig (stateVars ++ constants)) obligs))
@@ -263,7 +272,7 @@ showType = foldRose f
         f (_, Type n) [] = n
         f (_, ArrayType _ t) [] = if t == "int" then "seq Int" else ("seq " ++ t)
         f (_, SetType t) [] = "set " ++ t
-        f (_, String n) [] = n ++ " + NULL"
+        f (_, String n) [] = n ++ " + NIL"
         f (_, Const) [x] = x
         f (_, Product) xs = (showRel xs)
 	f (_, Output) [x] = x

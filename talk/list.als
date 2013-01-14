@@ -1,4 +1,4 @@
-
+/*
 sig Node {
 	next : set (Node+NIL)
 }
@@ -10,7 +10,7 @@ fact {
 }
 
 run {} for 4
-
+*/
 
 pred list_p[next:Node->(Node+NIL)] 
 {
