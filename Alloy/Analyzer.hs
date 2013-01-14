@@ -353,12 +353,13 @@ have to remove or we won't find the variable in the type environment.
 -}
  
 removeSkolemPrefix :: String -> String
-removeSkolemPrefix = drop 1 . dropWhile (/= '_')
+-- removeSkolemPrefix = drop 1 . dropWhile (/= '_')
+removeSkolemPrefix = reverse . takeWhile (/= '_') . reverse
 
 showRelation :: Env -> String -> [Tuple] -> String
 showRelation env name tuples = 
   case (lookup name env) of 
-     Nothing -> error ("Type error: " ++ name ++ " is untyped.")
+     Nothing -> "** Warning: " ++ name ++ " is untyped. ** " ++ (show tuples)
      (Just t) -> showTuples t tuples
 
 showTuples :: AST -> [Tuple] -> String

@@ -3,13 +3,15 @@ record Node {
   next : Node 
 }
 
-proc Reverse[h,p: Node]
-	{ nullterminated[next,h] and h = H and next = NEXT }
-; h,p := NULL,h
+proc Reverse[h: out Node]
+	{ list_p[next] and h = H and next = NEXT }
+  p : Node
+; h,p := NIL, h
 ; keeping
-	 p in between[NEXT,H,NULL] and h in between[NEXT,H,NULL] and separate[corange[next,p,NULL],corange[next,h,NULL]] and concat[~corange[next,h,NULL],corange[NEXT,p,NULL]] = corange[NEXT,H,NULL] 
-  do p != NULL -> p.next,p,h := h,p.next,p
+	separate[list[h,next],list[p,next]] and
+	concat[rev[list[h,next]],list[p,next]] = list[H,NEXT] 
+  do p != NIL -> h,p,p.next := p,p.next,h
   od
-	{ nullterminated[next,h] and ~corange[next,h,NULL] = corange[NEXT,H,NULL] }
+	{ list_p[next] and concat[rev[list[h,next]],list[p,next]] = list[H,NEXT] }
 
-theory lists
+theory list
