@@ -1,0 +1,26 @@
+
+Reference Name				Reference Key
+
+Introduction to Algorithms 2nd Ed.	1
+
+Alogrithm name			Reference Key	Exact Location		Implementation	
+
+insertion sort			1		Chapter 2.1		InsertionSort.w	
+binary search			1		Exercise 2.3-5		BinarySearch.w
+merge sort			1 		Chapter 2.3	
+buble sort			1 		Problems 2.2	
+hire assistant			1 		Chapter 5.1	
+randomized hire assistant	1 		Chapter 5.3	
+permute by sorting		1		Chapter 5.3	
+randomize in place		1		Chapter 5.3
+on-line maximum			1		Chapter 5.4.4
+max heapify			1 		Chapter 6.2
+build max heap			1		Chapter 6.3
+heap sort			1		Chapter 6.4
+heap extract max		1		Chapter 6.5
+partition			1		Chapter 7.1		Partition.w	
+quick sort			1		Chapter 7.1		QuickSort.w
+randomized partition		1		Chapter 7.3		
+randomized quick sort		1		Chapter 7.3		
+counting sort			1		Chapter 8.2	
+
