@@ -4,7 +4,7 @@ record Node {
   key : int
 }
 
-proc BinaryTreeSearch[r: Node, k:int, p:out Node]
+proc TreeSearch[r: Node, k:int, p:out Node]
 	{ binary_search_tree[Node,left,right,key] and key[first[left,right,r]] < k < key[last[left,right,r]] }
   b,m,e : Node
 ; b,m,e := first[left,right,r], r, last[left,right,r]

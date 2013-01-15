@@ -23,4 +23,5 @@ quick sort			1		Chapter 7.1		QuickSort.w
 randomized partition		1		Chapter 7.3		
 randomized quick sort		1		Chapter 7.3		
 counting sort			1		Chapter 8.2	
-
+reverse list			1		Exercise 10.2-7		ReverseList.w
+tree search			1		Chapter 12.2		TreeSearch.w
