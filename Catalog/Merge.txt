@@ -1,0 +1,39 @@
+
+The key insights to Merge's proof are:
+
+1. The postcondition
+
+	sorted[result, append[left,right]] 
+
+says that the array result should contain an ordered permutation of some
+combination (here we have appended them) of the left and right arrays.
+
+2. We present the postcondition in a more explicit way as follows:
+
+	sorted[subseq[result,0,K-1], append[subseq[left,0,N-1],subseq[right,0,M-1]]] 
+
+where N is the size of left and M is the size of right.
+
+From this presentation we may derive a loop invariant by replacing the
+constants K, N and M with the variables k, n and m:
+
+	sorted[subseq[result,0,k-1], append[subseq[left,0,n-1],subseq[right,0,m-1]]] 
+
+It is easy to see that when k = K, n = N and m = M we get the postcondition
+and that when k,n, and m are all zero the predicate is trivially true.
+
+3. We implement the loop in the standard way, that is each time picking the 
+smallest element from either left or right and addit it to result.
+
+4. However, the loop invariant is not strong enough to prove that these operations
+maintain it. We must add the following predicates:
+
+	all i:0..n-1,j:m..M-1 | right[j] >= left[i] 
+
+	all i:n..N-1,j:0..m-1 | left[i] >= right[j]
+
+Together these predicates say that all the memebers that we have already 
+inserted into result (those in left[0..n-1] and in right[0..m-1]) are
+smaller than the elements that we haven't inserted (those in left[n,N-1] and
+in right[m,M-1])
+

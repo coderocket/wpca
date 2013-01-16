@@ -7,8 +7,9 @@ Alogrithm name			Reference Key	Exact Location		Implementation
 
 insertion sort			1		Chapter 2.1		InsertionSort.w	
 binary search			1		Exercise 2.3-5		BinarySearch.w
+merge  				1		Chapter 2.3.1		Merge.w 
 merge sort			1 		Chapter 2.3	
-buble sort			1 		Problems 2.2	
+bubble sort			1 		Problems 2.2	
 hire assistant			1 		Chapter 5.1	
 randomized hire assistant	1 		Chapter 5.3	
 permute by sorting		1		Chapter 5.3	
