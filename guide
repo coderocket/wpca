@@ -1,5 +1,6 @@
 
-todo		Makefile
+todo		
+Makefile
 
 WPCA Language
 
@@ -31,25 +32,12 @@ Tool Configuration
 ./Config/Parser.y 	
 ./Config/Lexer.x
 
-./wpca.cfg	Tool configuration file
+./refute.template.cfg	Template for the tool configuration file
 
-Tests
+Tests			Develop the algorithms here, then copy
+			to the Catalog
 
-test1.w		test1.expected
-test2.w		test2.expected
-test3.w		test3.expected
-test4.w		test4.expected
-test5.w		test5.expected
-test6.w		test6.expected
-test7.w		test7.expected
-test8.w		test8.expected
-test9.w		test9.expected
-test10.w	test10.expected
-test11.w	test11.expected
-test12.w	test12.expected
-test13.w	test13.expected
-test14.w	test14.expected
-test15.w	test15.expected
+Catalog			Repository of Verified Algorithms 
 
 Git configuration
 
