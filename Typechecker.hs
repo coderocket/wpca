@@ -39,13 +39,13 @@ typeof env (Node (p, String n) []) =
 -- additional join expressions
 
 typeof env (Node (p, ArrayJoin) [x,y]) = 
-  case (typeof env x) of 
-    (Node (_, Type "int") []) -> 
+  if (typeof env x) `sameTypeAs` intType
+  then
       case (typeof env y) of
         (Node (_, ArrayType _ t) []) -> Node (startLoc, Type t) []
         (Node (_, Const) [Node (_, ArrayType _ t) []]) -> Node (startLoc, Type t) []
         _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to de-reference a non-array")
-    _ -> error ("Type mismatch: " ++ (show p) ++ ": array index must be an integer")
+   else error ("Type mismatch: " ++ (show p) ++ ": array index must be an integer")
 
 -- typeof (x.y) = T provided that
 -- typeof x = X and typeof y = X <-> T
