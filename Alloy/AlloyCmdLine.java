@@ -59,6 +59,14 @@ public final class AlloyCmdLine {
                 System.out.print("Relevance Warning:\n"+(msg.toString().trim())+"\n\n");
                 System.out.flush();
             }
+ 	    @Override public void solve(int primaryVars, int totalVars, int clauses) {
+                System.out.println("... solving (" + Integer.toString(primaryVars) + " primary variables)");
+                System.out.flush();
+	    }
+ 	    @Override public void translate(java.lang.String solver, int bitwidth, int maxseq, int skolemDepth, int symmetry)  {
+                System.out.println("... generating CNF for " + solver + " (" + Integer.toString(bitwidth) + " bitwidth)");
+                System.out.flush();
+	    }
         };
 
 	String filename = args[0];
@@ -66,41 +74,48 @@ public final class AlloyCmdLine {
 
 	// Identify yourself
 	System.out.println("Alloy Analyzer " + Version.version() + " (build: " + Version.buildNumber() +" date: " + Version.buildDate() +")");
-        // Parse+typecheck the model
-        System.out.println("Parsing and Typechecking "+filename+" ...");
-        Module world = CompUtil.parseEverything_fromFile(rep, null, filename);
 
-        // Choose some default options for how you want to execute the commands
-        A4Options options = new A4Options();
-        options.solver = A4Options.SatSolver.SAT4J;
-	boolean foundCounterExamples = false;
-        for (Command command: world.getAllCommands()) {
-            // Execute the command
-            System.out.println("... Executing command "+command+":");
-            A4Solution ans = TranslateAlloyToKodkod.execute_command(rep, world.getAllReachableSigs(), command, options);
-            // Print the outcome
-            output.println(command+":");
-            output.println(ans);
-            // If satisfiable...
-            if (ans.satisfiable()) {
-		foundCounterExamples = true;
-                // You can query "ans" to find out the values of each set or type.
-                // This can be useful for debugging.
-                //
-                // You can also write the outcome to an XML file
-                // ans.writeXML("alloy_example_output.xml");
-                //
-                // You can then visualize the XML file by calling this:
-/*
-                    if (viz==null) {
-                        viz = new VizGUI(false, "alloy_example_output.xml", null);
-                    } else {
-                        viz.loadXML("alloy_example_output.xml", true);
-                    }
-*/
-            }
+	try {
+	        // Parse+typecheck the model
+	        System.out.println("Parsing and Typechecking "+filename+" ...");
+	        Module world = CompUtil.parseEverything_fromFile(rep, null, filename);
+	
+	        // Choose some default options for how you want to execute the commands
+	        A4Options options = new A4Options();
+	        options.solver = A4Options.SatSolver.SAT4J;
+		boolean foundCounterExamples = false;
+	        for (Command command: world.getAllCommands()) {
+	            // Execute the command
+	            System.out.println("... Executing command "+command+":");
+	            A4Solution ans = TranslateAlloyToKodkod.execute_command(rep, world.getAllReachableSigs(), command, options);
+	            // Print the outcome
+	            output.println(command+":");
+	            output.println(ans);
+	            // If satisfiable...
+	            if (ans.satisfiable()) {
+			foundCounterExamples = true;
+	                // You can query "ans" to find out the values of each set or type.
+	                // This can be useful for debugging.
+	                //
+	                // You can also write the outcome to an XML file
+	                // ans.writeXML("alloy_example_output.xml");
+	                //
+	                // You can then visualize the XML file by calling this:
+	/*
+	                    if (viz==null) {
+	                        viz = new VizGUI(false, "alloy_example_output.xml", null);
+	                    } else {
+	                        viz.loadXML("alloy_example_output.xml", true);
+	                    }
+	*/
+	            }
+	        }
+		if (!foundCounterExamples)
+			System.out.println("\nFound no counterexamples, procedure may be correct.");
         }
-	if (!foundCounterExamples)
-		System.out.println("Found no counterexamples, procedure may be correct.");
+        catch(Err error) {
+            System.out.println("Alloy has encountered an error at: " + error.pos.toString() +": " + error.msg);
+        }
     }
 }
+
