@@ -14,6 +14,7 @@ showA = foldRose f
         f (_, Div) [x,y] = x ++ ".div[" ++ y ++"]"
         f (_, Mod) [x,y] = x ++ ".rem[" ++ y ++"]"
         f (_, Quotient) [x,y] = "(" ++ x ++ " / " ++ y ++ ")"
+        f (_, ReflexiveTransitive) [x] = "*(" ++ x ++ ")"
         f (_, Eq) [x,y] = x ++ " = " ++ y
         f (_, NotEq) [x,y] = x ++ " != " ++ y
         f (_, Greater) [x,y] = x ++ " > " ++ y

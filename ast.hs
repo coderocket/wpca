@@ -6,7 +6,7 @@ type Env = [(String,AST)]
 
 type AST = Tree (Loc,Kind)
 
-data Kind = Int Int | String String | Type String | Spec | Declaration | Assert | Assign | Loop | Cond | Seq | Skip | Alloc String | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | ArrayJoin | Greater | Less | List | Not | Break | ArrayType String String | Range | Quantifier Quantifier | Pair | Union | Update | Closure | SomeSet | Product | In | Proc String | Record String | Program | Output | OutputVar | RecordType String | Reverse | SetDiff | SetType String | Call String | SpecStmt | PassByRef String
+data Kind = Int Int | String String | Type String | Spec | Declaration | Assert | Assign | Loop | Cond | Seq | Skip | Alloc String | Neg | True | False | Const | Plus| Minus | Times | Quotient | Div | Mod  | ReflexiveTransitive | NotEq | Eq | Geq | Leq | Conj | Disj | Implies | Join | ArrayJoin | Greater | Less | List | Not | Break | ArrayType String String | Range | Quantifier Quantifier | Pair | Union | Update | Closure | SomeSet | Product | In | Proc String | Record String | Program | Output | OutputVar | RecordType String | Reverse | SetDiff | SetType String | Call String | SpecStmt | PassByRef String
   deriving (Eq,Show)
 
 data PassStyle = PassIn | PassOut | PassInOut

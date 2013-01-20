@@ -13,7 +13,6 @@ tokens :-
   $white+				;
   "--".*				;
   "~"					{ \p s -> TokRev (loc p) }
-  "§"					{ \p s -> TokUnion (loc p) }
   ">"                                   { \p s -> TokGreater (loc p) }
   ">="                                   { \p s -> TokGeq (loc p) }
   "<="                                   { \p s -> TokLeq (loc p) }

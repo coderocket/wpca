@@ -34,33 +34,22 @@ work config (Node (_,Program) [Node (_,List) records, Node (_,List) procs, Node 
 
 preProcess :: [AST] -> [AST] -> [AST]
 
-preProcess records procs = [ preProcessProc records $ extractConstants records p | p <- procs ]
+preProcess records procs = [ extractConstants records $ preProcessProc records p | p <- procs ]
 
-preProcessProc records proc = tidyOps types $ tidyJoins proc
-  where types = (getRecordTypes records) ++ (getStateVars records proc)
+preProcessProc records proc@(Node (_,Proc _) [params, locals, pre, program, post]) = 
+  tidyOps types $ tidyJoins proc
+    where types = (getRecordTypes records) ++ (getStateVars records params locals)
+
+getStateVars :: [AST] -> AST -> AST -> Env
+getStateVars records params locals =
+  builtInStateVars ++ getStateEnv records (subForest (append params locals))
+  where builtInStateVars = [("extent", setType "Object")]
 
 extractConstants :: [AST] -> AST -> AST
 
 extractConstants records (Node (p, Proc name) [params, locals, pre, program, post]) = Node (p, Proc name) [params, locals, constants, pre, program, post]
   where constants = Node (startLoc, List) (cvarsX (getStateEnv records (subForest params)) pre)
 
-cvars :: Env -> AST -> [AST]
-
--- To find the type of a constant (a.k.a model) variable
--- we look for either a top level equality expression or
--- an equality expression in top level conjunctions where
--- the left hand side is a state variable and the right
--- hand side is the constant variable.
-
-cvars types (Node (_,Eq) [expr, (Node (p,String c) [])]) =
-    case (lookup c types) of
-      Nothing -> [ declaration c (typeof types expr) ]
-      (Just _) -> []
-
-cvars types (Node (_, Conj) [x, y]) = xtypes ++ (cvars ((declsToList xtypes)++types) y)
-  where xtypes = cvars types x
-
-cvars types _ = []
 
 cvarsX :: Env -> AST -> [AST]
 
@@ -73,12 +62,6 @@ cvarsX types (Node (_, Conj) [x, y]) = xtypes ++ (cvarsX ((declsToList xtypes)++
   where xtypes = cvarsX types x
 
 cvarsX types _ = []
-
-getStateVars :: [AST] -> AST -> Env
-
-getStateVars records (Node (_,Proc _) [params, locals, constants, pre, program, post]) = 
-  builtInStateVars ++ getStateEnv records (subForest (append params locals))
-  where builtInStateVars = [("extent", setType "Object")]
 
 analyze :: Config -> [AST] -> [AST] -> [AST] -> IO ()
 analyze config records procs theory = loop procs 
@@ -97,7 +80,7 @@ we generate a report based on the results of the analysis.
 
 analyzeProc :: Config -> Env -> [AST] -> [AST]-> AST -> IO ()
 
-analyzeProc cfg procs theory records proc =
+analyzeProc cfg procs theory records proc = 
   do (obligs,types) <- generate procConfig procs theory records proc
      analyse procConfig 
      report types procConfig obligs
@@ -124,9 +107,9 @@ the report.
 
 generate :: Config -> Env -> [AST] -> [AST] -> AST -> IO ([(String,Oblig)], Env)
 
-generate cfg procs theory records proc = 
+generate cfg procs theory records proc@(Node (_,Proc _) [params, locals, constants, pre, program, post]) = 
   do putStrLn $ "Generating model for procedure " ++ (getProcName proc) ++ "..." 
-     stateVars <- return $ getStateVars records proc
+     stateVars <- return $ getStateVars records params locals
      constants <- return $ getConstants proc 
      obligs <- calcObligs procs proc
      consistencyCheck <- generateConsistencyCheck proc
@@ -151,14 +134,20 @@ tidyJoins = foldRose f
 -- We treat both as sets unless both types are integers.
 
 tidyOps :: Env -> AST -> AST
+
 tidyOps env (Node (pos, Plus) [x,y]) = 
-  if typeof env x `sameTypeAs` intType && typeof env y `sameTypeAs` intType
-  then Node (pos, Plus) [x,y]
-  else Node (pos, Union) [x,y]
+  if typeof env x' `sameTypeAs` intType && typeof env y' `sameTypeAs` intType
+  then Node (pos, Plus) [x',y']
+  else Node (pos, Union) [x',y']
+  where x' = tidyOps env x
+        y' = tidyOps env y
+
 tidyOps env (Node (pos, Minus) [x,y]) = 
-  if typeof env x `sameTypeAs` intType && typeof env y `sameTypeAs` intType
-  then Node (pos, Minus) [x,y]
-  else Node (pos, SetDiff) [x,y]
+  if typeof env x' `sameTypeAs` intType && typeof env y' `sameTypeAs` intType
+  then Node (pos, Minus) [x',y']
+  else Node (pos, SetDiff) [x',y']
+  where x' = tidyOps env x
+        y' = tidyOps env y
 
 tidyOps env (Node (pos, Quantifier q) [ Node(_,List) decls, body]) = 
   Node (pos, Quantifier q) [tidyOpsDecls env decls, tidyOps ((declsToList decls) ++ env) body]
@@ -233,7 +222,7 @@ showStateVar (name,t) = "STATE_" ++ name ++ ": " ++ (showType t) ++ "\n"
 showRecord :: AST -> String
 showRecord (Node (_,Record name) defs) = header ++ fields ++ footer
   where header = "sig " ++ name ++ " extends Object {\n" 
-        fields = "" -- separateByComma (map showDef defs)
+        fields = "" 
         footer = "}\n"
 
 showDef :: AST -> String
@@ -252,7 +241,6 @@ showOblig env (nm, (wp, path, goal)) = comment ++ pred ++ assertion ++ check
         pred = "pred pred_"  ++ nm ++ "[" ++ (showEnv env) ++ "]\n{\n" ++ (showConstraints env) ++ " =>\n\t" ++ (showA wp) ++ "\n}\n"
         assertion = "assert " ++ nm ++ " {\nall " ++ (showEnv env) ++ "| pred_" ++ nm ++ "[" ++ (showEnvNames env) ++ "]" ++ "\n}\n"
         check = "check " ++ nm ++ "\n\n" 
--- " for 3 but 2 Int\n\n"
 
 showEnv :: Env -> String
 showEnv [] = ""
@@ -353,7 +341,6 @@ have to remove or we won't find the variable in the type environment.
 -}
  
 removeSkolemPrefix :: String -> String
--- removeSkolemPrefix = drop 1 . dropWhile (/= '_')
 removeSkolemPrefix = reverse . takeWhile (/= '_') . reverse
 
 showRelation :: Env -> String -> [Tuple] -> String

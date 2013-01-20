@@ -5,7 +5,7 @@ open misc
 open util/relation
 /*
 sig Node {
-	left,right : set Node+NULL
+	left,right : set Node+NIL
 }
 
 fact {	
@@ -26,7 +26,7 @@ pred binary_tree[
 	left in dom -> one univ
 	right in dom -> one univ
 
-	let lft = left :> (univ-NULL), rgt = right :> (univ-NULL) | {
+	let lft = left :> (univ-NIL), rgt = right :> (univ-NIL) | {
 		lft + rgt in dom lone -> univ
 		no lft & rgt
    }
@@ -37,7 +37,7 @@ pred less_eq[
 	rgt: univ -> univ,
 	x,y: univ] 
 {
-	let left = lft :> (univ-NULL), right = rgt :> (univ-NULL) | {
+	let left = lft :> (univ-NIL), right = rgt :> (univ-NIL) | {
 		some z : univ | x in (z.left.*(right+left) + z) and y in (z.right.*(left+right) + z)
 	}
 }
@@ -57,31 +57,12 @@ fun next[
 	~(this/prev[left,right])
 }
 
-/*
-fun prev[
-	left: univ -> univ,
-	right: univ -> univ,
-	x:univ] : univ 
-{
-	{ y : univ | x != y and less_eq[left,right,y,x] and 
-						(all x':univ-x | less_eq[left,right,x',x] => less_eq[left,right,x',y]) }
-}
-
-fun next[
-	left: univ -> univ,
-	right: univ -> univ,
-	x:univ] : univ
-{
-	{ y : univ | x = this/prev[left,right,y] }
-}
-*/
-
 fun first[
 	left: univ -> univ,
 	right: univ -> univ,
 	root:univ] : univ
 {
-	{ x : root.*(left+right) - NULL | no y : root.*(left+right) | y = this/prev[left,right,x] }
+	{ x : root.*(left+right) - NIL | no y : root.*(left+right) | y = this/prev[left,right,x] }
 }
 
 fun last[
@@ -89,6 +70,6 @@ fun last[
 	right: univ -> univ,
 	root:univ] :univ
 {
-	{ x : root.*(left+right) - NULL | no y : root.*(left+right) | y = this/next[left,right,x] }
+	{ x : root.*(left+right) - NIL | no y : root.*(left+right) | y = this/next[left,right,x] }
 }
 

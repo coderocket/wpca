@@ -28,6 +28,7 @@ typeof env (Node (p, Disj) [x,y]) = binary "bool" boolType env p x y "disjoin (o
 typeof env (Node (p, Implies) [x,y]) = binary "bool" boolType env p x y "(imply (=>)"
 typeof env (Node (p, Not) [x]) = unary "bool" boolType env p x "negate (logical not)"
 typeof env (Node (p, Neg) [x]) = unary "int" intType env p x "negate (-)"
+typeof env (Node (p, ReflexiveTransitive) [x]) = typeof env x
 typeof env (Node (p, String n) []) = 
   case (lookup n env) of
     (Just t) -> case t of 
@@ -57,7 +58,17 @@ typeof env (Node (p, Join) [x,y]) =
                                    else error ("Type mismatch at: " ++ (show p) ++ (show t1) ++ " != " ++ (show (typeof env x)))
     _ -> error ("Type mismatch: " ++ (show p) ++ " the expression " ++ (show y) ++ " is not a relation.")
 
-typeof _ uu = error ("unknown expression: " ++ (show uu))
+typeof env (Node (p, Union) [x,y]) = 
+  if (typeof env x) `sameTypeAs` (typeof env y)
+  then typeof env x
+  else error ("Type mistmatch: " ++ (show p) ++ " invalid union between " ++ (show x) ++ " and " ++ (show y) ++ "\n")
+
+typeof env (Node (p, SetDiff) [x,y]) = 
+  if (typeof env x) `sameTypeAs` (typeof env y)
+  then typeof env x
+  else error ("Type mistmatch: " ++ (show p) ++ " invalid set difference between " ++ (show x) ++ " and " ++ (show y) ++ "\n")
+
+typeof _ uu = error ("Don't know how to type the expression: " ++ (show uu))
 
 sameTypeAs :: AST -> AST -> Bool
 
@@ -72,13 +83,13 @@ sameTypeAs (Node (_, Product) ts) (Node (_, Product) us) = foldr f Prelude.True 
   where f (t,u) rest = (t `sameTypeAs` u) && rest 
 sameTypeAs (Node (_, Range) _) t = sameTypeAs intType t
 sameTypeAs t (Node (_, Range) _) = sameTypeAs t intType 
-sameTypeAs e1 e2 = error ("unsupported types: " ++ (show e1) ++ (show e2))
+sameTypeAs e1 e2 = Prelude.False 
 
 unary :: String -> AST -> Env -> Loc -> AST -> String -> AST
 unary argtype resulttype env p x opname = 
   case (typeof env x) of
     (Node (_,Type argtype) []) -> resulttype
-    _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to " ++ opname ++ " a non " ++ argtype ++ " expression") 
+    _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to " ++ opname ++ " a non " ++ argtype ++ " expression:\n" ++ (show x)) 
 
 binary :: String -> AST -> Env -> Loc -> AST -> AST -> String -> AST
 
@@ -87,6 +98,6 @@ binary argtype resulttype env p x y opname =
    (Node (_, Type argtype) []) -> 
      case (typeof env y) of 
       (Node (_, Type argtype) []) -> resulttype
-      _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to " ++ opname ++ " a non " ++ argtype ++ " expression")
-   _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to " ++ opname ++ " a non " ++ argtype ++ " expression")
+      _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to " ++ opname ++ " a non " ++ argtype ++ " expression:\n" ++ (show x) ++ "\n" ++ (show y))
+   _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to " ++ opname ++ " a non " ++ argtype ++ " expression\n" ++ (show x) ++ "\n" ++ (show y))
 
