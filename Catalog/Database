@@ -15,7 +15,7 @@ randomized hire assistant	1 		Chapter 5.3
 permute by sorting		1		Chapter 5.3	
 randomize in place		1		Chapter 5.3
 on-line maximum			1		Chapter 5.4.4
-max heapify			1 		Chapter 6.2
+max heapify			1 		Chapter 6.2		MaxHeapify.w
 build max heap			1		Chapter 6.3
 heap sort			1		Chapter 6.4
 heap extract max		1		Chapter 6.5

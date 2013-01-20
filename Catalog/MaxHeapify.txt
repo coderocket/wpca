@@ -1,0 +1,20 @@
+
+The key insights to MaxHeapify's proof are:
+
+1. Unfortunately it is very difficult (if at all possible) to specify a binary
+heap represented as an array. In order to specify the heap we must be able to 
+describe all the children of a node, but this requires a transitive closure of
+the left and right operations. However, in the array representation these are
+not relations (they have an elegant arithmetic interpreatation). 
+
+2. To say that a binary tree is almost a heap is to say that the key of every node 
+except perhaps one is larger than or equal to the keys of its children. 
+
+	all p : (root.*(left+right)) - k | all c : p.(left+right) | key[p] >= key[c]
+
+Note that if k is NIL then this predicate says that the tree is indeed a heap.
+
+In addition, at the beginning this is true for k = root. This gives a simple
+invariant and a simple strategy to maintain in the loop. However we must be 
+careful not to access the key of a NIL object.
+
