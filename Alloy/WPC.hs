@@ -273,8 +273,9 @@ wpxCallX procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args ob
          constants' = Node (startLoc, List) (map f (subForest constants))
          f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = 
              Node (startLoc, Declaration) [Node (startLoc,List) [Node (startLoc, String x) [], subst [] env e], t]
-         frame = Node (startLoc, List) [ declaration name t | ((_, Node (_,Output) [t]), Node (_,String name) []) <- zip (declsToList (subForest params)) args ]
-         env = zip (map fst (declsToList (subForest params))) args
+         frame = Node (startLoc, List) [ declaration name t | ((_, Node (_,Output) [t]), Node (_,String name) []) <- zip paramList args ]
+         env = zip (map fst paramList) args
+         paramList = declsToList (subForest params)
 
 wpxCall procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args obligs = wpx procs (assignToParams `wseq` specStmt `wseq` assignToVars) obligs 
   where assignToParams = Node (startLoc, Assign) [getNames params, Node (startLoc, List) args]
