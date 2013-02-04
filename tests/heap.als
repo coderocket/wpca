@@ -20,7 +20,7 @@ run {no (left+right).Root and some right.Node } for 6 but 1 Object
 
 pred heap_p[root:Node,left,right : Node -> (Node+NIL), key : Node -> Int]
 {
-key in Node -> one Int
+	key in Node -> one Int
 	binary_tree[Node,left,right]
 	all p : root.*(left+right) | all c : p.(left+right) | key[p] >= key[c]
 }

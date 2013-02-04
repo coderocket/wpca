@@ -12,6 +12,7 @@ import Loc
 %error { parseError }
 %monad { Either String } 
 %token
+	'modifies'{ TokModifies $$ }
 	'out'	{ TokOut $$ }
 	'record'{ TokRecord $$ }
 	'proc'	{ TokProc $$ }
@@ -100,7 +101,10 @@ Theory :  { [] }
 
 Record : 'record' name '{' LocalsList '}' { Node ($1, Record (snd $2)) $4 }
 
-Proc : 'proc' name '[' Locals ']' Pre Locals ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$7,$6,$9,$10] }
+Proc : 'proc' name '[' Locals ']' Modifies Pre Locals ';' Seq Post { Node ($1, Proc (snd $2)) [$4,$8,$7,$10,$11, Node ($5,List) $6] } 
+
+Modifies : { [] }
+	| 'modifies' Names { $2 }
 
 Locals : LocalsList { Node (fst (rootLabel (head $1)), List) (reverse $1) }
 

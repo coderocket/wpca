@@ -191,11 +191,11 @@ wpx procs (Node (pos,Loop) [inv, (Node (_,List) gs)]) post = establishInv : main
 
 {-
 
-Given a procedure f[params] {pre} {post})
+Given a procedure f[params] modifies xs {pre} {post})
 
 The semantics of the call f[args] is the following:
 
-(pre[params:=args] | out[params:=args] | post[params:=args])
+(pre[params:=args] | out[params:=args],xs | post[params:=args])
 
 where out is the set of out parameters and provided that in the
 substitution params:=args the output parameters are replaced by variables.
@@ -266,18 +266,18 @@ quantifySomeXX constants pred = quantifySome decls pred
         f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) =		
 		Node (startLoc, Declaration) [Node (startLoc, List) [Node (startLoc, String x) []], t] 
 
-wpxCallX procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args obligs = 
+wpxCallX procs (Node (_,Proc _) [params,locals,constants,pre,body,post,modifies]) args obligs = 
   wpx procs (Node (startLoc, SpecStmt) [pre', constants', frame, post']) obligs 
   where  pre' = subst [] env pre
          post' = subst [] env post
          constants' = Node (startLoc, List) (map f (subForest constants))
          f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = 
              Node (startLoc, Declaration) [Node (startLoc,List) [Node (startLoc, String x) [], subst [] env e], t]
-         frame = Node (startLoc, List) [ declaration name t | ((_, Node (_,Output) [t]), Node (_,String name) []) <- zip paramList args ]
+         frame = Node (startLoc, List) ([ declaration name t | ((_, Node (_,Output) [t]), Node (_,String name) []) <- zip paramList args ] ++ (subForest modifies))
          env = zip (map fst paramList) args
          paramList = declsToList (subForest params)
-
-wpxCall procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args obligs = wpx procs (assignToParams `wseq` specStmt `wseq` assignToVars) obligs 
+         
+wpxCall procs (Node (_,Proc _) [params,locals,constants,pre,body,post, modifies]) args obligs = wpx procs (assignToParams `wseq` specStmt `wseq` assignToVars) obligs 
   where assignToParams = Node (startLoc, Assign) [getNames params, Node (startLoc, List) args]
         specStmt = Node (startLoc, SpecStmt) [pre, constants, filterOutParams params, post]
 	assignToVars = Node (startLoc, Assign) [filterOutVars (zip (subForest params) args), getNames (filterOutParams params)]

@@ -4,7 +4,7 @@ record Node {
 	key : int
 }
 
-proc MaxHeapify[root:Node]
+proc MaxHeapify[root:Node] modifies key
 	{ key = KEY and heap_p[root.left, left, right, key] and heap_p[root.right, left, right, key] }
   k : Node
 ; k := root
@@ -16,4 +16,12 @@ proc MaxHeapify[root:Node]
         fi
   od
 	{ permutation_r[key,KEY] and heap_p[root, left, right, key] }
+	
+proc MakeHeap[root:Node] modifies key
+	{ binary_tree[Node, left, right] }
+; if root = NIL -> skip
+  [] MakeHeap[root.left]; MakeHeap[root.right]; MaxHeapify[root]
+  fi 
+	{ heap_p[root, left, right, key] }
+	
 theory heap

@@ -40,6 +40,7 @@ tokens :-
   "*"                                   { \p s -> TokStar (loc p) }
   "/"                                   { \p s -> TokSlash (loc p) }
   "|"                                   { \p s -> TokBar (loc p) }
+  "modifies"				{ \p s -> TokModifies (loc p) }
   "is"					{ \p s -> TokIs (loc p) }
   "new"					{ \p s -> TokNew (loc p) }
   "in"					{ \p s -> TokIn (loc p) }
@@ -78,6 +79,7 @@ loc (AlexPn _ line col) = (line,col)
 -- The token type:
 
 data Token =
+	TokModifies Loc |
 	TokIs Loc |
 	TokNew Loc |
 	TokRev Loc |

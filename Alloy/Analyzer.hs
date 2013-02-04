@@ -36,9 +36,20 @@ preProcess :: [AST] -> [AST] -> [AST]
 
 preProcess records procs = [ extractConstants records $ preProcessProc records p | p <- procs ]
 
-preProcessProc records proc@(Node (_,Proc _) [params, locals, pre, program, post]) = 
-  tidyOps types $ tidyJoins proc
+preProcessProc records proc@(Node (_,Proc _) [params, locals, pre, program, post, modifies]) = 
+  typeModifies records $ tidyOps types $ tidyJoins proc
     where types = (getRecordTypes records) ++ (getStateVars records params locals)
+
+typeModifies :: [AST] -> AST -> AST
+typeModifies records (Node (pos,Proc procName) [params, locals, pre, program, post, modifies]) =
+  Node (pos, Proc procName) [params, locals, pre, program, post, modifies']
+    where modifies' = Node (startLoc, List) (map (typeFieldName records) (subForest modifies))
+
+typeFieldName [] (Node (_,String name) []) = error ("Syntax error: No such record field: " ++ name)
+typeFieldName ((Node (_,Record recordName) fields):rs) s@(Node (_,String name) []) = 
+  case (lookup name (declsToList fields)) of
+	Nothing -> typeFieldName rs s
+	(Just t) -> declaration name (Node (startLoc, Product) [string recordName,  t])
 
 getStateVars :: [AST] -> AST -> AST -> Env
 getStateVars records params locals =
@@ -47,7 +58,7 @@ getStateVars records params locals =
 
 extractConstants :: [AST] -> AST -> AST
 
-extractConstants records (Node (p, Proc name) [params, locals, pre, program, post]) = Node (p, Proc name) [params, locals, constants, pre, program, post]
+extractConstants records (Node (p, Proc name) [params, locals, pre, program, post, modifies]) = Node (p, Proc name) [params, locals, constants, pre, program, post,modifies]
   where constants = Node (startLoc, List) (cvarsX (getStateEnv records (subForest params)) pre)
 
 
@@ -107,7 +118,7 @@ the report.
 
 generate :: Config -> Env -> [AST] -> [AST] -> AST -> IO ([(String,Oblig)], Env)
 
-generate cfg procs theory records proc@(Node (_,Proc _) [params, locals, constants, pre, program, post]) = 
+generate cfg procs theory records proc@(Node (_,Proc _) [params, locals, constants, pre, program, post,modifies]) = 
   do putStrLn $ "Generating model for procedure " ++ (getProcName proc) ++ "..." 
      stateVars <- return $ getStateVars records params locals
      constants <- return $ getConstants proc 
@@ -121,7 +132,7 @@ generate cfg procs theory records proc@(Node (_,Proc _) [params, locals, constan
      return (obligs, stateVars ++ constants)
 
 generateConsistencyCheck :: AST -> IO String
-generateConsistencyCheck (Node (p,Proc _) [params,locals,constants,pre,body,post]) = return ""
+generateConsistencyCheck (Node (p,Proc _) [params,locals,constants,pre,body,post,modifies]) = return ""
 
 -- Alloy does not care if the join is due to an array or due to a relation
 
@@ -160,7 +171,7 @@ tidyOpsDecls env decls = Node (startLoc, List) [ Node (startLoc, Declaration) [n
 
 getConstants :: AST -> Env
 
-getConstants (Node (_,Proc _) [params, locals, Node (_,List) constants, pre, program, post]) = 
+getConstants (Node (_,Proc _) [params, locals, Node (_,List) constants, pre, program, post,modifies]) = 
   map f constants 
   where f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = (x,t)
 
@@ -185,7 +196,7 @@ getRecordTypes = map getRecordType
 getRecordType :: AST -> (String,AST)
 getRecordType (Node (_, Record name) _) = (name, setType name)
 
-calcObligs procs (Node (_,Proc _) [params, locals, constants, pre, program, post]) = 
+calcObligs procs (Node (_,Proc _) [params, locals, constants, pre, program, post,modifies]) = 
  return $ zip names [ (pre `implies` wp,path,goal) | (wp,path,goal) <- obligations]
  where names = ["test"++(show i) | i <- [1..] ] 
        obligations = wpx procs program [(post,[],"satisfy the postcondition\n\n" ++ (show (fst (npos post))) ++ ": " ++ (showA post))]
