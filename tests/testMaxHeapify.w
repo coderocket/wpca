@@ -15,13 +15,13 @@ proc MaxHeapify[root:Node] modifies key
         [] k.right = NIL or (k.left != NIL and key[k.right] <= key[k.left]) -> k.key,k.left.key,k := k.left.key, k.key,k.left
         fi
   od
-	{ permutation_r[key,KEY] and heap_p[root, left, right, key] }
+	{ permutation_r[key,KEY] and heap_p[root, left, right, key] and all n : Node - root.*(left+right) | n.key = n.KEY}
 	
 proc MakeHeap[root:Node] modifies key
-	{ binary_tree[Node, left, right] }
+	{ key = U and function[key,Node] and binary_tree[Node, left, right] }
 ; if root = NIL -> skip
-  [] MakeHeap[root.left]; MakeHeap[root.right]; MaxHeapify[root]
+  [] root != NIL -> MakeHeap[root.left]; MakeHeap[root.right] ; MaxHeapify[root]
   fi 
-	{ heap_p[root, left, right, key] }
+	{ permutation_r[key,U] and heap_p[root, left, right, key] and all n : Node - root.*(left+right) | n.key = n.U}
 	
 theory heap

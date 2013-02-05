@@ -227,9 +227,21 @@ wpx procs (Node (_,Call name) args) obligs =
 		Nothing -> error ("No such procedure: " ++ name)
 
 wpx procs (Node (_, SpecStmt) [pre, constants, frame, post]) obligs =
-	[ (onePointRule constants pre, path, "satisfy the precondition of the procedure") | (p,path,goal) <- obligs ]
-	++ [ (onePointRule constants (quantifyState frame (post `implies` p)), path, "the postcondition of the procedure implies " ++ goal) | (p,path,goal) <- obligs ]
+	[ (onePointRule constants pre, path, "satisfy the precondition\n" ++ (showA pre) ++ "\n of the procedure") | (p,path,goal) <- obligs ]
+	++ [ (subst [] (swapNames (freshConstants p)) (onePointRule constants (quantifyState frame (post `implies` (subst [] (freshConstants p) p)))), path, goal ++ "\nbecause the postcondition of the procedure (" ++ (showA post) ++ ")\nfails to imply it") | (p,path,goal) <- obligs ]
+	  where freshConstants p = freshNames (constantNames constants) p
 
+freshNames :: [String] -> AST -> [(String, AST)]
+freshNames used expr = map f (used `intersect` (free [] expr)) 
+  where f n = (n, string (genFresh n 0 used))
+
+swapNames :: [(String, AST)] -> [(String, AST)]
+swapNames ns = [ (n2, string n1) | (n1, Node (_,String n2) []) <- ns ]
+
+constantNames :: AST -> [String]
+constantNames = map f . subForest
+  where f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = x
+  
 onePointRule :: AST -> AST -> AST 
 onePointRule (Node (_,List) constants) pred = subst [] (map f constants) pred
   where f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = (x,e)

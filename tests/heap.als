@@ -1,12 +1,13 @@
 
 module heap
 
+open util/relation
 open binary_tree
 
 /*
 sig Node {
 	left, right : Node+NIL,
-	key : Int
+	key,key',key'' : set Int
 }
 
 one sig Root in Node {}
@@ -18,28 +19,40 @@ fact {
 run {no (left+right).Root and some right.Node } for 6 but 1 Object
 */
 
-pred heap_p[root:Node,left,right : Node -> (Node+NIL), key : Node -> Int]
+pred heap_p[root:Node+NIL,left,right : Node -> (Node+NIL), key : Node -> Int]
 {
-	key in Node -> one Int
+	function[key,Node]
 	binary_tree[Node,left,right]
 	all p : root.*(left+right) | all c : p.(left+right) | key[p] >= key[c]
 }
 
+/*
+check {
+	all left,right : Node -> (Node+NIL), key : Node -> Int |
+		function[key,Node] and binary_tree[Node,left,right] => heap_p[NIL, left, right, key]
+}
+*/
+
 pred permutation_r[k,k' : Node -> Int] 
 {
-	#k = #k'
-all i : Node.k | #k.i = #k'.i
-}
+	k.Int = k'.Int
+	all i : Node.(k+k') | #(Node<:k).i = #(Node<:k').i
+} 
 
 /*
-check { 
-	all k:Node-> Int | permutation_r[k,k]
-}
+check {
+	permutation_r[key,key'] => #key = #key'
+} for 3 but 3 int
 
-check { 
-	all k,k',k'':Node-> Int | permutation_r[k,k'] and permutation_r[k',k''] =>
-		permutation_r[k,k'']
-}
+check {
+	permutation_r[key,key] 
+} 
 
-run permutation_r
+check {
+	permutation_r[key,key'] <=> permutation_r[key',key]
+} 
+
+check {
+	permutation_r[key,key']  and permutation_r[key',key''] => permutation_r[key,key'']
+} 
 */

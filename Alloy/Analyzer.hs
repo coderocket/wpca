@@ -34,15 +34,15 @@ work config (Node (_,Program) [Node (_,List) records, Node (_,List) procs, Node 
 
 preProcess :: [AST] -> [AST] -> [AST]
 
-preProcess records procs = [ extractConstants records $ preProcessProc records p | p <- procs ]
+preProcess records procs = [ preProcessProc records $ extractConstants records  p | p <- procs ]
 
-preProcessProc records proc@(Node (_,Proc _) [params, locals, pre, program, post, modifies]) = 
+preProcessProc records proc@(Node (_,Proc _) [params, locals, constants, pre, program, post, modifies]) = 
   typeModifies records $ tidyOps types $ tidyJoins proc
-    where types = (getRecordTypes records) ++ (getStateVars records params locals)
+    where types = (getRecordTypes records) ++ (getStateVars records params locals) ++ (declsToList (subForest constants))
 
 typeModifies :: [AST] -> AST -> AST
-typeModifies records (Node (pos,Proc procName) [params, locals, pre, program, post, modifies]) =
-  Node (pos, Proc procName) [params, locals, pre, program, post, modifies']
+typeModifies records (Node (pos,Proc procName) [params, locals, constants, pre, program, post, modifies]) =
+  Node (pos, Proc procName) [params, locals, constants, pre, program, post, modifies']
     where modifies' = Node (startLoc, List) (map (typeFieldName records) (subForest modifies))
 
 typeFieldName [] (Node (_,String name) []) = error ("Syntax error: No such record field: " ++ name)
@@ -60,7 +60,6 @@ extractConstants :: [AST] -> AST -> AST
 
 extractConstants records (Node (p, Proc name) [params, locals, pre, program, post, modifies]) = Node (p, Proc name) [params, locals, constants, pre, program, post,modifies]
   where constants = Node (startLoc, List) (cvarsX (getStateEnv records (subForest params)) pre)
-
 
 cvarsX :: Env -> AST -> [AST]
 
