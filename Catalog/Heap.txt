@@ -18,3 +18,13 @@ In addition, at the beginning this is true for k = root. This gives a simple
 invariant and a simple strategy to maintain in the loop. However we must be 
 careful not to access the key of a NIL object.
 
+The key insights to MakeHeap's proof are:
+
+It is essential to specify that both MakeHeap and MaxHeapify change only the tree 
+that is rooted in their root parameter. 
+
+all n : Node - root.*(left+right) | n.key = n.KEY
+
+This is again an example of a separation predicate that ensures that  when we apply 
+MakeHeap to the left hand side of the tree and then to the right hand side of the
+tree the second application does not affect that left hand side of the tree:
