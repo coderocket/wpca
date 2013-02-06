@@ -67,7 +67,7 @@ preparePrototypes = foldr (++) "" . map (appendSemi . preparePrototype)
   where appendSemi s = s ++ ";\n"
 
 preparePrototype :: AST -> String
-preparePrototype (Node (_,Proc name) [Node (_,List) params, locals, pre,body,post]) = 
+preparePrototype (Node (_,Proc name) [Node (_,List) params, locals, pre,body,post,modifies]) = 
   "void " ++ name ++ "(" ++ prepareParams params ++ ")"
 
 prepareParams :: [AST] -> String
@@ -125,7 +125,7 @@ prepareBody :: Env -> AST -> String
 prepareBody types = showCode . annotate . (normalize types)
 
 normalize :: Env -> AST -> (Env,AST)
-normalize types (Node (_,Proc name) [Node (_,List) params, locals, pre,body,post]) = (env, (separateDecls (subForest locals)) `wseq` tmps `wseq` normalized)
+normalize types (Node (_,Proc name) [Node (_,List) params, locals, pre,body,post,modifies]) = (env, (separateDecls (subForest locals)) `wseq` tmps `wseq` normalized)
   where env = types ++ (declsToList (subForest locals)) ++ (declsToList params)
         (tmps,normalized) = transform env body
 
@@ -145,7 +145,7 @@ annotateVars (env,body) = foldRose f body
 annotateCall :: String -> Env -> [AST] -> AST
 annotateCall procName env args = 
 	case lookup procName env of
-		(Just (Node (_,Proc _) [Node (_,List) params,_,_,_,_])) -> Node (startLoc, Call procName) (annotateArgs (declsToList params) args)
+		(Just (Node (_,Proc _) [Node (_,List) params,_,_,_,_,_])) -> Node (startLoc, Call procName) (annotateArgs (declsToList params) args)
 		Nothing -> error ("No such procedure: " ++ procName)
 
 annotateArgs :: Env -> [AST] -> [AST]

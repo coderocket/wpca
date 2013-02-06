@@ -1,3 +1,104 @@
+
+Mon Jan 21 14:24:25 IST 2013
+
+How do we specify that a procedure modifies a record field? it is
+wrong to pass the field as an argument to the procedure but we must
+know which record fields are modified or we won't be able to call
+this procedure --- the frame must contain the relations that
+correspond to the fields that it modifies.
+
+one way to solve this problem is to add a modifies clause to the
+procedure's definition:
+
+record A {
+  x,y,z : T
+}
+
+proc S[params] modifies x,y
+	{ pre }
+; body
+	{post }
+
+and of course the fields that a procedure modifies must include all
+the modified fields of the procedures that it calls.
+
+this is important: the modifies clause is a part of the procedure's
+specification because it forms part of its frame. To be more precise
+the frame of a procedure is the union of the set of its output
+parameters and the set of its modifies record fields.
+
+Notes regarding the above:
+
+  1. Refute can check that the modifies clause is valid:
+    - make sure that if a procedure assigns to a field then it appears
+      in its modifies clause
+    - make sure that if a procedure S calls a procedure with a modifies 
+      clause mc then mc is a subset of S's modifies clause.
+  2. We can use the modifies clause to handle any global variables not
+  necessarily record fields
+  3. We can qualify record fields with the record's name to avoid 
+  name conflicts (the same field name appearing in two different records)
+  4. What does this clause mean for modularity? under what cases 
+  can we hide the modifies clause?
+  
+  consider the case where procedure S calls procedure R and x appears in
+  R's modifies clause but it does not appear in R's precondition or in R's 
+  postcondition. In addition x does not appear in S. In this case is it
+  safe to say that S does not see x and therefore x can be removed from S's
+  modifies clause? what if procedure T calls S and does use x? 
+
+  Aha! if we impose a discipline of layers we can avoid this problem. Only
+  the procedures of a particular layer may use x. Any procedure in layers 
+  above x's layer does not see x at all. Under this scheme x may disappear
+  from the modifies clause of all the procedures in the upper layers.
+
+  module BinaryTreeUser
+
+  proc S[...]
+ 	{ ... }
+  ; ...
+  ; Insert[root, 5]
+  ; Insert[root, 3]
+  ; Insert[root, 8]
+  ; ...
+  ; BinaryTreeFind[root, 3, p]
+  ; if p != NIL -> ...
+
+  module BinarySearchTree
+
+  record Node {
+    left, right : Node,
+    key : int
+  }
+
+  proc Insert[root : Node, k : int] modifies left, right, key
+    { binary_search_tree[left, right, key] and key = KEY }
+; ...
+    { binary_search_tree[left, right, key] and ... }  
+
+  proc BinaryTreeFind[root : Node, k : int, p : out Node]
+... 
+
+  Neither the code nor the specification in the module BinaryTreeUser
+  can refer to next, right and key because they are in a lower
+  level (the BinaryTree module). This ensures that we can remove
+  left,right and key from the modifies clause of the procedures in
+  the BinaryTreeUser module. However the proof obligation calculator
+  does use the full specification of procedures in BinaryTree when
+  it checks the procedures of BinaryTreeUser.
+
+  This entire analysis is based on the following property of universal
+  quantification:
+
+  all x : X | P 
+
+  is equivalent to 
+
+  (some X) => P
+
+  if x does not appear free in P
+
+
 - ensure that constants do not appear in code
 - Instead of moving quantifiers of higher order variables to the top we can
 use the following equivalence

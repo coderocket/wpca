@@ -191,11 +191,11 @@ wpx procs (Node (pos,Loop) [inv, (Node (_,List) gs)]) post = establishInv : main
 
 {-
 
-Given a procedure f[params] {pre} {post})
+Given a procedure f[params] modifies xs {pre} {post})
 
 The semantics of the call f[args] is the following:
 
-(pre[params:=args] | out[params:=args] | post[params:=args])
+(pre[params:=args] | out[params:=args],xs | post[params:=args])
 
 where out is the set of out parameters and provided that in the
 substitution params:=args the output parameters are replaced by variables.
@@ -227,9 +227,21 @@ wpx procs (Node (_,Call name) args) obligs =
 		Nothing -> error ("No such procedure: " ++ name)
 
 wpx procs (Node (_, SpecStmt) [pre, constants, frame, post]) obligs =
-	[ (onePointRule constants pre, path, "satisfy the precondition of the procedure") | (p,path,goal) <- obligs ]
-	++ [ (onePointRule constants (quantifyState frame (post `implies` p)), path, "the postcondition of the procedure implies " ++ goal) | (p,path,goal) <- obligs ]
+	[ (onePointRule constants pre, path, "satisfy the precondition\n" ++ (showA pre) ++ "\n of the procedure") | (p,path,goal) <- obligs ]
+	++ [ (subst [] (swapNames (freshConstants p)) (onePointRule constants (quantifyState frame (post `implies` (subst [] (freshConstants p) p)))), path, goal ++ "\nbecause the postcondition of the procedure (" ++ (showA post) ++ ")\nfails to imply it") | (p,path,goal) <- obligs ]
+	  where freshConstants p = freshNames (constantNames constants) p
 
+freshNames :: [String] -> AST -> [(String, AST)]
+freshNames used expr = map f (used `intersect` (free [] expr)) 
+  where f n = (n, string (genFresh n 0 used))
+
+swapNames :: [(String, AST)] -> [(String, AST)]
+swapNames ns = [ (n2, string n1) | (n1, Node (_,String n2) []) <- ns ]
+
+constantNames :: AST -> [String]
+constantNames = map f . subForest
+  where f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = x
+  
 onePointRule :: AST -> AST -> AST 
 onePointRule (Node (_,List) constants) pred = subst [] (map f constants) pred
   where f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = (x,e)
@@ -266,17 +278,18 @@ quantifySomeXX constants pred = quantifySome decls pred
         f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) =		
 		Node (startLoc, Declaration) [Node (startLoc, List) [Node (startLoc, String x) []], t] 
 
-wpxCallX procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args obligs = 
+wpxCallX procs (Node (_,Proc _) [params,locals,constants,pre,body,post,modifies]) args obligs = 
   wpx procs (Node (startLoc, SpecStmt) [pre', constants', frame, post']) obligs 
   where  pre' = subst [] env pre
          post' = subst [] env post
          constants' = Node (startLoc, List) (map f (subForest constants))
          f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) = 
              Node (startLoc, Declaration) [Node (startLoc,List) [Node (startLoc, String x) [], subst [] env e], t]
-         frame = Node (startLoc, List) [ declaration name t | ((_, Node (_,Output) [t]), Node (_,String name) []) <- zip (declsToList (subForest params)) args ]
-         env = zip (map fst (declsToList (subForest params))) args
-
-wpxCall procs (Node (_,Proc _) [params,locals,constants,pre,body,post]) args obligs = wpx procs (assignToParams `wseq` specStmt `wseq` assignToVars) obligs 
+         frame = Node (startLoc, List) ([ declaration name t | ((_, Node (_,Output) [t]), Node (_,String name) []) <- zip paramList args ] ++ (subForest modifies))
+         env = zip (map fst paramList) args
+         paramList = declsToList (subForest params)
+         
+wpxCall procs (Node (_,Proc _) [params,locals,constants,pre,body,post, modifies]) args obligs = wpx procs (assignToParams `wseq` specStmt `wseq` assignToVars) obligs 
   where assignToParams = Node (startLoc, Assign) [getNames params, Node (startLoc, List) args]
         specStmt = Node (startLoc, SpecStmt) [pre, constants, filterOutParams params, post]
 	assignToVars = Node (startLoc, Assign) [filterOutVars (zip (subForest params) args), getNames (filterOutParams params)]

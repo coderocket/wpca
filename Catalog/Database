@@ -3,26 +3,26 @@ Reference Name				Reference Key
 
 Introduction to Algorithms 2nd Ed.	1
 
-Alogrithm name			Reference Key	Exact Location		Implementation	
+Alogrithm name			Reference Key	Exact Location		Implementation 	proc. name
 
-insertion sort			1		Chapter 2.1		InsertionSort.w	
-binary search			1		Exercise 2.3-5		BinarySearch.w
-merge  				1		Chapter 2.3.1		Merge.w 
-merge sort			1 		Chapter 2.3	
-bubble sort			1 		Problems 2.2	
-hire assistant			1 		Chapter 5.1	
-randomized hire assistant	1 		Chapter 5.3	
-permute by sorting		1		Chapter 5.3	
-randomize in place		1		Chapter 5.3
-on-line maximum			1		Chapter 5.4.4
-max heapify			1 		Chapter 6.2		MaxHeapify.w
-build max heap			1		Chapter 6.3
-heap sort			1		Chapter 6.4
-heap extract max		1		Chapter 6.5
-partition			1		Chapter 7.1		Partition.w	
-quick sort			1		Chapter 7.1		QuickSort.w
-randomized partition		1		Chapter 7.3		
-randomized quick sort		1		Chapter 7.3		
-counting sort			1		Chapter 8.2	
-reverse list			1		Exercise 10.2-7		ReverseList.w
-tree search			1		Chapter 12.2		TreeSearch.w
+insertion sort				1			Chapter 2.1		InsertionSort.w	
+binary search				1			Exercise 2.3-5		BinarySearch.w
+merge  					1			Chapter 2.3.1		Merge.w 
+merge sort				1 			Chapter 2.3	
+bubble sort				1 			Problems 2.2	
+hire assistant				1 			Chapter 5.1	
+randomized hire assistant	1 			Chapter 5.3	
+permute by sorting			1			Chapter 5.3	
+randomize in place			1			Chapter 5.3
+on-line maximum			1			Chapter 5.4.4
+max heapify				1 			Chapter 6.2		Heap.w			MaxHeapify
+build max heap			1			Chapter 6.3		Heap.w			MakeHeap
+heap sort					1			Chapter 6.4
+heap extract max			1			Chapter 6.5
+partition					1			Chapter 7.1		Partition.w	
+quick sort					1			Chapter 7.1		QuickSort.w
+randomized partition		1			Chapter 7.3		
+randomized quick sort		1			Chapter 7.3		
+counting sort				1			Chapter 8.2	
+reverse list				1			Exercise 10.2-7	ReverseList.w
+tree search				1			Chapter 12.2		TreeSearch.w

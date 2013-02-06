@@ -18,10 +18,10 @@ proc MaxHeapify[root:Node] modifies key
 	{ permutation_r[key,KEY] and heap_p[root, left, right, key] and all n : Node - root.*(left+right) | n.key = n.KEY}
 	
 proc MakeHeap[root:Node] modifies key
-	{ key = U and function[key,Node] and binary_tree[Node, left, right] }
+	{ key = KEY and function[key,Node] and binary_tree[Node, left, right] }
 ; if root = NIL -> skip
   [] root != NIL -> MakeHeap[root.left]; MakeHeap[root.right] ; MaxHeapify[root]
   fi 
-	{ permutation_r[key,U] and heap_p[root, left, right, key] and all n : Node - root.*(left+right) | n.key = n.U}
+	{ permutation_r[key,KEY] and heap_p[root, left, right, key] and all n : Node - root.*(left+right) | n.key = n.KEY }
 	
 theory heap
