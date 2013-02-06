@@ -125,7 +125,7 @@ prepareBody :: Env -> AST -> String
 prepareBody types = showCode . annotate . (normalize types)
 
 normalize :: Env -> AST -> (Env,AST)
-normalize types (Node (_,Proc name) [Node (_,List) params, locals, pre,body,post,modifies]) = (env, (separateDecls (subForest locals)) `wseq` tmps `wseq` normalized)
+normalize types (Node (_,Proc name) [Node (_,List) params, locals, pre,body,post,modifies]) = (env, (Node (startLoc, List) (listToDecls (declsToList (subForest locals)))) `wseq` tmps `wseq` normalized)
   where env = types ++ (declsToList (subForest locals)) ++ (declsToList params)
         (tmps,normalized) = transform env body
 
@@ -169,7 +169,7 @@ showCode = foldRose f
         f (_,ArrayType _ t) [] = t ++ "*"
         f (_,Join) xs = (showJoin xs)
         f (_,ArrayJoin) xs = (showArrayJoin xs)
-        f (_,String n) [] = n 
+        f (_,String n) [] = if n == "NIL" then "NULL" else n 
         f (_,RecordType n) [] = "struct " ++ n  ++ "* "
 	f (_,Output) [x] = x ++ "*"
         f (_,OutputVar) [x] = "*" ++ x 
