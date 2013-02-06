@@ -23,7 +23,7 @@ pred heap_p[root:Node+NIL,left,right : Node -> (Node+NIL), key : Node -> Int]
 {
 	function[key,Node]
 	binary_tree[Node,left,right]
-	all p : root.*(left+right) | all c : p.(left+right) | key[p] >= key[c]
+	all p : root.*(left+right) | all c : p.(left+right) | c != NIL => key[p] >= key[c]
 }
 
 /*

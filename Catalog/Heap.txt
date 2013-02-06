@@ -10,7 +10,7 @@ not relations (they have an elegant arithmetic interpreatation).
 2. To say that a binary tree is almost a heap is to say that the key of every node 
 except perhaps one is larger than or equal to the keys of its children. 
 
-	all p : (root.*(left+right)) - k | all c : p.(left+right) | key[p] >= key[c]
+	all p : (root.*(left+right)) - k | all c : p.(left+right) | c != NIL => key[p] >= key[c]
 
 Note that if k is NIL then this predicate says that the tree is indeed a heap.
 
