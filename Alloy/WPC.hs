@@ -112,7 +112,7 @@ wpx procs (Node (_,Alloc name) [typ]) post = [ (f p, path, goal) | (p, path, goa
 wpx procs (Node (_,Skip) []) post = post
 wpx procs (Node (pos,Assert) [p]) post = (p,[(pos,showA p)],"satisfy the assertion"):post
 wpx procs (Node (_,Seq) [x,y]) post = wpx procs x ((wpx procs y) post)
-
+  
 wpx procs (Node (pos,Cond) gs) post = ifdomain : guards 
   where ifdomain = (foldr disj false (map guard gs), [(pos,"if ... fi")], "satisfy any of the guards")
         guards = [ (g `implies` p, (npos s, showA g):path, goal) |  (g,s) <- map tidy gs, (p, path, goal) <- wpx procs s post ]
@@ -221,14 +221,14 @@ from args.
 
 -}
  
-wpx procs (Node (_,Call name) args) obligs =
+wpx procs (Node (pos,Call name) args) obligs =
 	case (lookup name procs) of
-		(Just proc) -> wpxCallX procs proc args obligs
+		(Just proc) -> wpxCall pos procs proc args obligs
 		Nothing -> error ("No such procedure: " ++ name)
 
-wpx procs (Node (_, SpecStmt) [pre, constants, frame, post]) obligs =
-	[ (onePointRule constants pre, path, "satisfy the precondition\n" ++ (showA pre) ++ "\n of the procedure") | (p,path,goal) <- obligs ]
-	++ [ (subst [] (swapNames (freshConstants p)) (onePointRule constants (quantifyState frame (post `implies` (subst [] (freshConstants p) p)))), path, goal ++ "\nbecause the postcondition of the procedure (" ++ (showA post) ++ ")\nfails to imply it") | (p,path,goal) <- obligs ]
+wpx procs (Node ((line,_), SpecStmt) [pre, constants, frame, post]) obligs = 
+	[ (onePointRule constants pre, [], "satisfy the precondition\n" ++ (showA pre) ++ "\nof the procedure call at line " ++ (show line) ++"\n") ]
+	++ [ (subst [] (swapNames (freshConstants p)) (onePointRule constants (quantifyState frame (post `implies` (subst [] (freshConstants p) p)))), path, goal) | (p,path,goal) <- obligs ]
 	  where freshConstants p = freshNames (constantNames constants) p
 
 freshNames :: [String] -> AST -> [(String, AST)]
@@ -269,17 +269,8 @@ quantifyAll decls pred = case decls of
 				(Node (_,List) []) -> error "Invalid procedure definition (empty frame)."
 				_ -> Node (startLoc, Quantifier All) [decls, pred]
 
-quantifySome decls pred = case decls of 
-				(Node (_,List) []) -> pred
-				_ -> Node (startLoc, Quantifier Some) [decls, pred]
-
-quantifySomeXX constants pred = quantifySome decls pred
-  where decls = Node (startLoc, List) (map f (subForest constants))
-        f (Node (_,Declaration) [(Node (_,List) [Node (_,String x) [],e]), t]) =		
-		Node (startLoc, Declaration) [Node (startLoc, List) [Node (startLoc, String x) []], t] 
-
-wpxCallX procs (Node (_,Proc _) [params,locals,constants,pre,body,post,modifies]) args obligs = 
-  wpx procs (Node (startLoc, SpecStmt) [pre', constants', frame, post']) obligs 
+wpxCall pos procs (Node (_,Proc _) [params,locals,constants,pre,body,post,modifies]) args obligs = 
+  wpx procs (Node (pos, SpecStmt) [pre', constants', frame, post']) obligs 
   where  pre' = subst [] env pre
          post' = subst [] env post
          constants' = Node (startLoc, List) (map f (subForest constants))
@@ -289,11 +280,6 @@ wpxCallX procs (Node (_,Proc _) [params,locals,constants,pre,body,post,modifies]
          env = zip (map fst paramList) args
          paramList = declsToList (subForest params)
          
-wpxCall procs (Node (_,Proc _) [params,locals,constants,pre,body,post, modifies]) args obligs = wpx procs (assignToParams `wseq` specStmt `wseq` assignToVars) obligs 
-  where assignToParams = Node (startLoc, Assign) [getNames params, Node (startLoc, List) args]
-        specStmt = Node (startLoc, SpecStmt) [pre, constants, filterOutParams params, post]
-	assignToVars = Node (startLoc, Assign) [filterOutVars (zip (subForest params) args), getNames (filterOutParams params)]
-
 getNames :: AST -> AST
 getNames decls = Node (startLoc,List) [ string name | (name,_) <- (declsToList (subForest decls)) ]
 

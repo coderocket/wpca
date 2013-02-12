@@ -6,5 +6,8 @@ proc F[x : out int]
 	
 proc G[x: out  int]
 	{ x = X }
-; F[x]; { x = X + 1 } ; F[x]
+; F[x]; { x = X + 1 } 
+
+
+; F[x]
 	{ x = X + 2 }
