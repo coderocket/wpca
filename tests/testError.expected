@@ -1,0 +1,33 @@
+$ ./wpca.exe testError.w
+$ ./wpca.exe testError.w
+This is wpca, Version 1.0
+Generating model for procedure P...
+... There are 7 proof obligations. Writing analysis file to P.analysis.als
+Alloy Analyzer 4.1.10 (build: 905 date: 2009/03/19 02:02 EDT)
+Parsing and Typechecking P.analysis.als ...
+... Executing command Check test1:
+... Executing command Check test2:
+... Executing command Check test3:
+... Executing command Check test4:
+... Executing command Check test5:
+... Executing command Check test6:
+... Executing command Check test7:
+
+... Parsing output file: P.output
+
+(test3) error:
+
+y = 7
+x = 5
+extent = []
+
+satisfies
+
+4: x < y
+7: x < y
+
+but fails to satisfy
+
+10: x >= y
+
+
