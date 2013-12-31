@@ -1,4 +1,19 @@
 
+Tue, Dec 31, 2013  3:28:34 PM
+
+There is a difference in the semantics of integer division between Alloy and C and this
+difference may cause code that passes Alloy to fail under C. in particular, under the
+Alloy semantics we have 
+
+-1 div 2 = -1
+
+but under the C semantics we have
+
+-1 / 2 = 0
+
+this should be fixed either by changing the Alloy semantics or by changing the code
+generation to match that of the Alloy semantics.
+
 Mon Jan 21 14:24:25 IST 2013
 
 How do we specify that a procedure modifies a record field? it is
