@@ -89,15 +89,13 @@ unary :: String -> AST -> Env -> Loc -> AST -> String -> AST
 unary argtype resulttype env p x opname = 
   case (typeof env x) of
     (Node (_,Type argtype) []) -> resulttype
-    _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to " ++ opname ++ " a non " ++ argtype ++ " expression:\n" ++ (show x)) 
+    _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to " ++ opname ++ " a non " ++ argtype ++ " expression:\n" ++ (show x) ++ "\nenv = " ++ (show env)) 
 
 binary :: String -> AST -> Env -> Loc -> AST -> AST -> String -> AST
 
 binary argtype resulttype env p x y opname = 
-  case (typeof env x) of 
-   (Node (_, Type argtype) []) -> 
-     case (typeof env y) of 
-      (Node (_, Type argtype) []) -> resulttype
-      _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to " ++ opname ++ " a non " ++ argtype ++ " expression:\n" ++ (show x) ++ "\n" ++ (show y))
-   _ -> error ("Type mismatch: " ++ (show p) ++ ": attempt to " ++ opname ++ " a non " ++ argtype ++ " expression\n" ++ (show x) ++ "\n" ++ (show y))
+  if (typeof env x) `sameTypeAs` t && (typeof env y) `sameTypeAs` t
+  then resulttype
+  else error ("Type mismatch: " ++ (show p) ++ ": attempt to " ++ opname ++ " a non " ++ argtype ++ " expression:\n" ++ (show x) ++ "\n" ++ (show y)) 
+  where t = Node (startLoc, Type argtype) []
 

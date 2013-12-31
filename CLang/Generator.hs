@@ -1,5 +1,5 @@
 module CLang.Generator where
-import List
+import Data.List
 import AST
 import Data.Tree
 import LookupMonad

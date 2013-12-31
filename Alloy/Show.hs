@@ -3,7 +3,7 @@ module Alloy.Show where
 import AST
 import Data.Tree
 import Data.Ord
-import List
+import Data.List
 import Loc
 
 showA :: AST -> String

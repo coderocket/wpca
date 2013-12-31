@@ -1,5 +1,5 @@
 module Alloy.WPC where
-import List
+import Data.List
 import Data.Tree
 import AST
 import Loc
@@ -332,7 +332,7 @@ free :: [String] -> AST -> [String]
 
 free bound (Node (_,String n) []) = freeVar bound n
 free bound (Node (_, Quantifier _) [decls,body]) = freeQuantifier bound decls body
-free bound (Node _ ns) = foldr List.union [] (map (free bound) ns)
+free bound (Node _ ns) = foldr Data.List.union [] (map (free bound) ns)
 
 freeVar bound n = 
   case (elemIndex n bound) of
@@ -345,10 +345,10 @@ freeQuantifier bound decls body =
 bound :: AST -> [String]
 
 bound (Node (_, Quantifier _) [decls,body]) = boundQuantifier decls body
-bound (Node _ ns) = foldr List.union [] (map bound ns)
+bound (Node _ ns) = foldr Data.List.union [] (map bound ns)
 
 boundQuantifier decls body =
-  (declNames decls) `List.union` (bound body)
+  (declNames decls) `Data.List.union` (bound body)
 
 declNames :: AST -> [String]
 declNames decls = map fst (declsToList (subForest decls))

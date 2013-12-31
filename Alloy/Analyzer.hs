@@ -9,9 +9,10 @@ import System.Process
 import System.Exit
 import System.IO
 import System.IO.Error
+import Control.Exception
 import Alloy.Output.Parser
 import Data.Ord
-import List
+import Data.List
 import Loc
 import Alloy.Show
 

@@ -25,7 +25,7 @@ tokens :-
 
 f = (takeWhile (/= '"')).tail
 
-tok t (pos, _, input) len = return (t pos (take len input))
+tok t (pos, _, _,input) len = return (t pos (take len input))
 
 alexEOF = return TokEOF
 

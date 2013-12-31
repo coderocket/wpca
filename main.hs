@@ -1,6 +1,6 @@
 
 module Main where
-import System
+import System.Environment
 import Parser
 import Config.Parser
 import AST
