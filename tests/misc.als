@@ -44,6 +44,13 @@ pred nochange[b,e:Int, x,X:seq univ]
 	}		
 }
 
+fun size[x:univ] : Int {
+  #x
+}
+
+fun dres[s:univ, r:univ->univ] : univ->univ {
+  s <: r
+}
 
 check { all x : Int | abs[abs[x]] = abs[x] }
 
